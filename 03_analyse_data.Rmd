@@ -14,10 +14,13 @@ require(raster)
 require(RColorBrewer)
 require(qpcR)
 
-rootPath="C:\\PHD\\Code_Projects\\55_check_ert\\01_DATA"
-grassPath="C:\\PHD\\Code_Projects\\55_check_ert\\01_DATA\\grass"
-setwd(rootPath)
+##set parent directory
+rootPath=dirname(getwd())
+grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
+TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
+SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
 
+setwd(rootPath)
 
 ##############################################################################
 ##settings
@@ -426,7 +429,7 @@ TDR at depth 40 did not record meaningful data
 ##############################################################################
 ##plot tdr data
 ##############################################################################
-setwd("C:\\PHD\\Publications\\9920_infiltration\\53_tdr")
+setwd(TDRPath)
 
 minY=32
 maxY=44
@@ -666,7 +669,7 @@ legend("bottomright",legend=depths$depth,title="Depth [cm]",col=depths$cols,pch=
 #################################################################################################
 ##FIT SWCC
 #################################################################################################
-setwd("C:\\PHD\\Code_Projects\\55_check_ert\\08_vanGenuchten\\curve_fitting")
+setwd(SWCCPath)
 
 require(minpack.lm)
 require(RColorBrewer)
