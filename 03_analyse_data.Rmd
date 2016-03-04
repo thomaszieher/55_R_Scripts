@@ -524,7 +524,7 @@ minTime=min(apply(dataProbes[grep("time",names(dataProbes))],2,min))
 maxTime=max(apply(dataProbes[grep("time",names(dataProbes))],2,max))
 
 sptempTDR=data.frame(time=seq(minTime,maxTime,by=1))
-probe="16"
+#probe="16"
 for (probe in probes$nr){
   sptempTDR=merge(sptempTDR,dataProbes[c(sprintf("time_%s",probe),sprintf("vol_%s",probe))],by.x="time",by.y=sprintf("time_%s",probe),all.x=T)
 }
@@ -538,7 +538,7 @@ sptemp=na.omit(na.approx(sptempTDR))
 #matplot(sptemp[,2:4],type="l")
 
 ##filter data.frame
-filterWindow=1200 ##seconds!!
+filterWindow=2400 ##seconds!!
 movingAverage=function(x,n){filter(x,rep(1/n,n),sides=2)}
 sptemp.filter=na.omit(data.frame(time=sptemp[,1],apply(sptemp[,2:4],2,movingAverage,n=filterWindow)))
 
@@ -550,7 +550,7 @@ transponded["depth"]=probes$depth
 ##set up spatio-temporal raster
 minDepth=0
 maxDepth=100
-increment=5
+increment=1
 depthTDR=data.frame(depth=seq(minDepth,maxDepth,by=increment))
 depthTDR=merge(depthTDR,transponded,by="depth",all.x=T)##[,33239:33339]
 depthTDR=data.frame(na.approx(depthTDR,rule=1,na.rm=F))##rule=2 for extrapolation
@@ -643,7 +643,7 @@ for (depth in depths$depth){
   ##plot model
   fitData=data.frame(seconds=seq(min(depthData$seconds),max(depthData$seconds),by=1))
   fitData["resist"]=-coef(Fit)[3]*(1/(1+exp(coef(Fit)[1]+coef(Fit)[2]*fitData$seconds)))
-  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-40,0),ylab="Resistivity difference [Ohm m]",xlab="Time [s]")
+  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-40,0),ylab="Resistivity difference [Ohm m]",xlab="Time [s]",las=1)
   lines(fitData$seconds,fitData$resist,col="red")
   
   ##tdr data at depth
@@ -651,7 +651,7 @@ for (depth in depths$depth){
   ##get time in seconds from measureday 12:00:00
   dataTDR.sub["seconds"]=as.numeric(as.POSIXct(dataTDR.sub$date))-(as.numeric(as.POSIXct(strptime(measureday,format="%Y-%m-%d %H:%M:%S")))+12*60*60)
   fused=merge(subset(dataTDR.sub,seconds%in%fitData$seconds),subset(fitData,seconds%in%dataTDR.sub$seconds),by="seconds")
-  plot(NA,NA,xlim=c(30,45),ylim=c(0,-40),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]")
+  plot(NA,NA,xlim=c(30,45),ylim=c(0,-40),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]",las=1)
   points(fused$vol,fused$resist,col=depths$cols[depths$depth==depth])
   
   linFit=lm(resist~vol,data=fused)
@@ -694,7 +694,7 @@ Gardner=function(psi,theta_r,theta_s,alpha){
 ##PLOT DATA
 par(mfrow=c(1,1),las=1)
 ##test fitting
-element="Bonacker2"#Fur"##"gem"##
+element="Bonacker1"#Fur"##"gem"##
 subdata=na.omit(data[,grep(element,names(data))])
 ##define NAs
 subdata[subdata=="NA"]<-NA
@@ -743,3 +743,8 @@ wc=vanGenuchten(psi,coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
 lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5))
 ```
 
+
+re-set root path
+```{r echo=F,message=F,warning=F}
+setwd(rootPath)
+```
