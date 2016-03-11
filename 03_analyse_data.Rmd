@@ -38,28 +38,23 @@ plot.max=196
 roundUp=function(x,to){
   to*(x%/%to+as.logical(x%%to))
 }
+
 roundDown=function(x,to){
   to*(x%/%to)
 }
+
 getDiff=function(rastT1,rastT2){
   diff=rastT1
   diff@data@values=rastT2@data@values-rastT1@data@values
   return(diff)
 }
+
 getRatio=function(rastT1,rastT2){
   ratio=rastT1
   ratio@data@values=rastT2@data@values/rastT1@data@values
   return(ratio)
 }
-getLogDiff=function(rastT1,rastT2){
-  diff=log10(t(as.matrix(rastT2))-t(as.matrix(rastT1)))
-  raster(diff)
-}
-getLog=function(rast){
-  rast.log=rast
-  rast.log@data=log10(rast@data)
-  as.Raster(rast.log)
-}
+
 as.Raster=function(rast){
   ##convert spatial data frame to raster
   ncols=rast@grid@cells.dim[1]
@@ -168,42 +163,19 @@ import raster and vector data from GRASS GIS location
 inversion models rasterized with optimized (cross-validated) smoothed spline interpolation
 ```{r echo=F,message=F,warning=F}
 ##show first ert
-plot(rast0,col=colorsERT)
+par(mfrow=c(1,1),mar=c(5,5,5,5),xaxs="i",yaxs="i")
+plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
+axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+mtext(side=1,line=2.5,"Relative distance [m]")
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10)
+mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+mtext(side=4,"Resistivity [Ohm m]",las=0,line=4.5)
+plot(rast0,col=colorsERT,add=T,axes=F,box=F)
 plot(irr_plot,add=T)
 points(probesERT,pch=3,cex=0.5)
 points(dcpt.vect$coords.x1,dcpt.vect$coords.x2,cex=0.2)
-mtext(side=4,line=5,"Resistivity [Ohm m]",las=0)
 ```
 
-
-
-
-
-###Overall changes
-Logarithm (base 10) of range of all datasets
-```{r echo=F,message=F,warning=F}
-##############################################################################
-##r.series maps
-##############################################################################
-##do not consider measurements on the folowing day
-#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_average",method="average",flag="overwrite")
-#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_minimum",method="minimum",flag="overwrite")
-#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_maximum",method="maximum",flag="overwrite")
-#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_sum",method="sum",flag="overwrite")
-#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_range",method="range",flag="overwrite")
-
-##EXPLORE r.series raster
-rastName="total_range"##"total_sum"
-rast.series=as.Raster(readRAST6(rastName))
-##plot range-raster
-rast.series.log=rast.series
-rast.series.log@data@values=log10(rast.series@data@values)
-par(xaxs="i",yaxs="i")
-plot(rast.series.log,col=colors)
-points(dcpt.vect,pch=20,cex=0.5)
-points(probesERT,pch=3,cex=0.5)
-mtext(side=4,line=4.5,"log10(value range)",las=0)
-```
 
 
 ###Data range of first five inversion models
@@ -220,8 +192,15 @@ rangeERT=as.Raster(readRAST6("before_range"))
 #plot(ecdf(rangeERT@data@values))
 #abline(v=c(mean(rangeERT@data@values,na.rm=T)),lty=2,col="red",lwd=2)
 #hist(rangeERT@data@values,breaks=100)
-plot(rangeERT,main="")
-text(side=4,line=4,"Range [Ohm m]")
+par(mfrow=c(1,1),mar=c(5,5,5,5),xaxs="i",yaxs="i")
+plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
+axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+mtext(side=1,line=2.5,"Relative distance [m]")
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10)
+mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+mtext(side=4,"Range [Ohm m]",las=0,line=3.5)
+plot(rangeERT,add=T,axes=F,box=F)
+
 
 ##material properties before irrigation (mean value)
 #execGRASS("r.series",input=rlist[2:6],output="before_mean",method="average",flag="overwrite")
@@ -239,19 +218,20 @@ material.before=as.Raster(readRAST6("before_mean"))
 ```
 
 
+
 Mean uncertainties with depth  
 ```{r echo=F,message=F,warning=F}
 ##relative proportion of range for differences
 start=2
 end=6
-xMin=-2
-xMax=2
+xMin=-1
+xMax=1
 cols.uncert=data.frame(run=start:end,col=colorRampPalette(rev(brewer.pal(5,"Set2")))(end-start+1),stringsAsFactors=F)
 ##plot
 par(mfrow=c(1,1),xaxs="i",yaxs="i")
 plot(NA,NA,type="l",col="red",ylim=c(47,0),xlim=c(xMin,xMax),axes=F,xlab="",ylab="")
 axis(side=1,at=seq(xMin,xMax,by=1))
-mtext(side=1,"Mean error [Ohm m]",line=2.5)
+mtext(side=1,"Mean error [%]",line=2.5)
 axis(side=2,at=seq(0,50,by=10),labels=seq(0,50,by=10)/10,las=1)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 abline(v=seq(xMin+1,xMax,by=1),lty=2,lwd=0.2,col="gray70")
@@ -260,9 +240,7 @@ for (i in seq(start,end,by=1)){
   #print(i)
   #print(rlist[i])
   rast1=as.Raster(readRAST6(rlist[i]))
-  #rast2=as.Raster(readRAST6(rlist[i+1]))
-  #uncertaintyDiff=data.frame(uncert=((((rast2+rangeERT/2)-(rast1-rangeERT/2)))/rangeERT)@data@values)
-  uncertaintyDiff=data.frame(uncert=(rast1-material.before)@data@values)
+  uncertaintyDiff=data.frame(uncert=((rast1/material.before)@data@values-1)*100)
   uncertaintyDiff["depth"]=as.data.frame(raster(depth.mask))
   ##calculate mean
   uncertaintyStat=aggregate(uncertaintyDiff,list(uncertaintyDiff$depth),FUN=mean,na.rm=T)
@@ -272,6 +250,7 @@ for (i in seq(start,end,by=1)){
 }
 legend("bottomright",legend=timelist$time[start:end],col=cols.uncert$col,lty=1)
 ```
+
 
 Relative uncertainties  
 ```{r echo=F,message=F,warning=F}
@@ -288,8 +267,51 @@ plot((rangeERT/material.before)*100,axes=F,box=F,add=T,asp=1)
 
 
 
+###Overall changes
+Range of all datasets before tracer divided by material before (first five measurements)  
+Differences in the uppermost 1m due to irrigation  
+Differences below due to artefacts (changing contrast due to irrigation)  
+```{r echo=F,message=F,warning=F}
+##############################################################################
+##r.series maps
+##############################################################################
+##do not consider measurements on the folowing day
+#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_average",method="average",flag="overwrite")
+#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_minimum",method="minimum",flag="overwrite")
+#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_maximum",method="maximum",flag="overwrite")
+#execGRASS("r.series",input=rlist[2:length(rlist)],output="total_sum",method="sum",flag="overwrite")
+#execGRASS("r.series",input=rlist[2:17],output="total_range",method="range",flag="overwrite")
+
+##EXPLORE r.series raster
+rastName="total_range"##"total_sum"
+rast.series=as.Raster(readRAST6(rastName))
+##plot relative range-raster
+relRange=rast.series/material.before*100
+par(xaxs="i",yaxs="i")
+plot(relRange,zlim=c(0,25))
+points(dcpt.vect,pch=20,cex=0.5)
+points(probesERT,pch=3,cex=0.5)
+mtext(side=4,line=4.5,"Relative value range [%]",las=0)
+
+##plot relative changes with depth
+relDiff=data.frame(diff=relRange@data@values)
+relDiff["depth"]=as.data.frame(raster(depth.mask))
+##calculate mean
+relDiffStat=aggregate(relDiff,list(relDiff$depth),FUN=mean,na.rm=T)
+##plot
+par(mfrow=c(1,1),xaxs="i",yaxs="i")
+plot(relDiffStat$diff,relDiffStat$depth-0.5,col="red",type="l",ylim=c(47,0),xlim=c(0,10),axes=F,xlab="",ylab="")
+axis(side=1,at=seq(0,10,by=2.5))
+mtext(side=1,"Mean relative changes [%]",line=2.5)
+axis(side=2,at=seq(0,50,by=10),labels=seq(0,50,by=10)/10,las=1)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+abline(v=seq(2.5,10,by=2.5),lty=2,lwd=0.2,col="gray70")
+abline(h=seq(0,50,by=5),lty=2,lwd=0.2,col="gray70")
+```
+
+
 ###Build depth mask
-Restrict further analysis to upper 2m within irrigation plot
+Restrict further analysis to upper 2m within irrigation plot (no bias from area outside)  
 ```{r echo=F,message=F,warning=F}
 ##raster for irrigatin plot extent
 lengthRast=rast0
@@ -339,14 +361,12 @@ endRaster=17
 
 depthMax=20
 colors.runs=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))((endRaster-startRaster)+1)
-range=70##
+range=12##
 
 ##pre-plot difference-depth plot
 par(las=1)
-##positive and negative
-#plot(NA,NA,ylim=c(depthMax,0),xlim=c(-(range/2),(range/2)),ylab="Depth [dm]",xlab="dRestivity [Ohmm]",type="l")
 ##negative only
-plot(NA,NA,ylim=c(depthMax,0),xlim=c(-(range),0),ylab="Depth [dm]",xlab="dResistivity [Ohm m]",type="l")
+plot(NA,NA,ylim=c(depthMax,0),xlim=c(-(range),0),ylab="Depth [dm]",xlab="Resistivity Ratio [%]",type="l")
 abline(v=c(0))
 
 ##set extreme values (cut off)
@@ -362,7 +382,7 @@ abline(v=c(0))
 #noise.max=0.26
 #noise.min=-noise.max
 
-i=20
+i=2
 ert.time=data.frame()
 ert.depth=data.frame(NA)
 for (i in seq(startRaster,endRaster,by=1)){
@@ -377,7 +397,11 @@ for (i in seq(startRaster,endRaster,by=1)){
   ##subtraction
   #diff=getDiff(rast1,rast2)
   ##or to first data set
-  diff=getDiff(material.before,rast1)
+  #diff=getDiff(material.before,rast1)
+  
+  ##ratio
+  ##or to first data set
+  diff=(getRatio(material.before,rast1)-1)*100
 
   ##only negative values
   diff@data@values[diff@data@values>0]=0
@@ -398,8 +422,8 @@ for (i in seq(startRaster,endRaster,by=1)){
 
   ##plot mean resistivity and sd with depth
   lines(data.mean$ratio,data.mean$depth,col=colors.runs[i-startRaster+1],lwd=4)
-  lines(data.mean$ratio+data.sd[,2],data.mean$depth,col=colors[i-startRaster],lty=2)
-  lines(data.mean$ratio-data.sd[,2],data.mean$depth,col=colors[i-startRaster],lty=2)
+  lines(data.mean$ratio+data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
+  lines(data.mean$ratio-data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
 }
 legend("bottomleft",legend=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M:%S"),col=colors.runs,lty=1,lwd=4,cex=0.8)
 ```
@@ -413,7 +437,7 @@ Variation in resistivity difference with time per depth
 ##only plot first 10 depths
 colors.depth=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(10)
 depth.steps=c("0 - 10","10 - 20","20 - 30","30 - 40","40 - 50","50 - 60","60 - 70","70 - 80","80 - 90","90 - 100")
-matplot(x=as.POSIXct(ert.time[,1],origin="1970-01-01"),as.data.frame(t(ert.depth[,-1]))[1:10],type="l",ylab="Resistivity difference [Ohm m]",xlab="Time",ylim=c(roundDown(min(ert.depth[,-1]),1),0),col=colors.depth,lty=1,lwd=2,axes=F)
+matplot(x=as.POSIXct(ert.time[,1],origin="1970-01-01"),as.data.frame(t(ert.depth[,-1]))[1:10],type="l",ylab="Resistivity ratio [%]",xlab="Time",ylim=c(roundDown(min(ert.depth[,-1]),1),0),col=colors.depth,lty=1,lwd=2,axes=F)
 axis(side=1,at=as.POSIXct(ert.time[,1],origin="1970-01-01"),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(roundUp(max(ert.depth[,-1]),1),roundDown(min(ert.depth[,-1]),10),by=-5))
 legend("bottomleft",legend=depth.steps,col=colors.depth,lty=1,lwd=2)
@@ -422,7 +446,7 @@ legend("bottomleft",legend=depth.steps,col=colors.depth,lty=1,lwd=2)
 
 
 
-###Plot TDR data
+###Recorded TDR data
 TDRs of upper profile  
 TDR at depth 40 did not record meaningful data
 ```{r echo=F,message=F,warning=F}
@@ -506,15 +530,18 @@ legend("bottomright",title="Depth [cm]",legend=probes$depth,lwd=2,lty=1,col=prob
 
 
 
-###saturation with depth
+###Saturation over time and depth
+Linear interpolation between recording times and Depth  
+Measurements smoothed by a defined window of time (40 min, )
 ```{r echo=F,message=F,warning=F}
-from=1
-to=60
+from=2
+to=20
 colTDR=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(to)
 plot(NA,NA,type="l",xlim=c(32,42),ylim=c(100,0),xlab="Saturation [Vol%]",ylab="Depth [m]")
 for (i in from:to){
   lines(t(colMeans(dataProbes[i,seq(1,ncol(dataProbes),by=3)])),probes$depth,col=colTDR[i])
 }
+legend("bottomleft",legend=timelist$time[from:to],col=colTDR,lty=1,cex=0.7)
 
 
 ##convert to spatio-temporal raster
@@ -539,7 +566,7 @@ sptemp=na.omit(na.approx(sptempTDR))
 
 ##filter data.frame
 filterWindow=2400 ##seconds!!
-movingAverage=function(x,n){filter(x,rep(1/n,n),sides=2)}
+movingAverage=function(x,n){filter(x,rep(1/n,n),sides=1)}
 sptemp.filter=na.omit(data.frame(time=sptemp[,1],apply(sptemp[,2:4],2,movingAverage,n=filterWindow)))
 
 ##linear interpolation with depth
@@ -550,7 +577,7 @@ transponded["depth"]=probes$depth
 ##set up spatio-temporal raster
 minDepth=0
 maxDepth=100
-increment=1
+increment=5
 depthTDR=data.frame(depth=seq(minDepth,maxDepth,by=increment))
 depthTDR=merge(depthTDR,transponded,by="depth",all.x=T)##[,33239:33339]
 depthTDR=data.frame(na.approx(depthTDR,rule=1,na.rm=F))##rule=2 for extrapolation
@@ -583,7 +610,7 @@ timeTicks=seq(minTime.sec,maxTime.sec,by=1800)
 timeLabels=format(TDRtime$time[TDRtime$seconds%in%timeTicks],format="%H:%M")
 axis(side=1,at=timeTicks,labels=timeLabels)
 mtext(side=1,line=3,"Time")
-axis(side=2,at=seq(maxDepth,minDepth,by=-increment),labels=seq(minDepth/100,maxDepth/100,by=increment/100))
+axis(side=2,at=seq(maxDepth,minDepth,by=-(increment*10)),labels=seq(minDepth/100,maxDepth/100,by=increment/10),las=1)
 mtext(side=2,line=3,"Depth [m]",las=0)
 mtext(side=4,line=2.5,"Water content [Vol%]",las=0)
 plot(TDRdatarast,col=rev(colors),add=T,zlim=c(32,40))
@@ -643,7 +670,7 @@ for (depth in depths$depth){
   ##plot model
   fitData=data.frame(seconds=seq(min(depthData$seconds),max(depthData$seconds),by=1))
   fitData["resist"]=-coef(Fit)[3]*(1/(1+exp(coef(Fit)[1]+coef(Fit)[2]*fitData$seconds)))
-  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-40,0),ylab="Resistivity difference [Ohm m]",xlab="Time [s]",las=1)
+  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-10,0),ylab="Resistivity difference [Ohm m]",xlab="Time [s]",las=1)
   lines(fitData$seconds,fitData$resist,col="red")
   
   ##tdr data at depth
@@ -651,7 +678,7 @@ for (depth in depths$depth){
   ##get time in seconds from measureday 12:00:00
   dataTDR.sub["seconds"]=as.numeric(as.POSIXct(dataTDR.sub$date))-(as.numeric(as.POSIXct(strptime(measureday,format="%Y-%m-%d %H:%M:%S")))+12*60*60)
   fused=merge(subset(dataTDR.sub,seconds%in%fitData$seconds),subset(fitData,seconds%in%dataTDR.sub$seconds),by="seconds")
-  plot(NA,NA,xlim=c(30,45),ylim=c(0,-40),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]",las=1)
+  plot(NA,NA,xlim=c(32,42),ylim=c(0,-10),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]",las=1)
   points(fused$vol,fused$resist,col=depths$cols[depths$depth==depth])
   
   linFit=lm(resist~vol,data=fused)
@@ -744,7 +771,44 @@ lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5))
 ```
 
 
-re-set root path
+calculate suction  
 ```{r echo=F,message=F,warning=F}
+##reverse van genuchten model (van Genuchten 1980)
+revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
+  10^(((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha
+  #theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
+}
+
+##plot(seq(0,1,0.01),revVanGenuchten(seq(0,1,0.01),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4]),log="y")
+suction.sub=revVanGenuchten(data.frame(TDRdata.sub/100),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
+
+##rasterize matrix
+Suctionrast=raster(suction.sub)
+##set extent (time relative to measureday)
+minTime.sec=TDRtime$seconds[TDRtime$time==mindate]
+maxTime.sec=TDRtime$seconds[TDRtime$time==maxdate]
+extent(Suctionrast)=c(minTime.sec,maxTime.sec,minDepth-increment/2,maxDepth+increment/2)
+
+##plot
+par(xaxs="i",yaxs="i")
+plot(NA,NA,xlim=c(minTime.sec,maxTime.sec),ylim=c(minDepth,maxDepth),axes=F,ylab="",xlab="",asp=(maxTime.sec-minTime.sec)/(maxDepth-minDepth))
+timeTicks=seq(minTime.sec,maxTime.sec,by=1800)
+timeLabels=format(TDRtime$time[TDRtime$seconds%in%timeTicks],format="%H:%M")
+axis(side=1,at=timeTicks,labels=timeLabels)
+mtext(side=1,line=3,"Time")
+axis(side=2,at=seq(maxDepth,minDepth,by=-(increment*10)),labels=seq(minDepth/100,maxDepth/100,by=increment/10),las=1)
+mtext(side=2,line=3,"Depth [m]",las=0)
+mtext(side=4,line=3.5,"Suction [hPa]",las=0)
+plot(Suctionrast,col=(colors),add=T,zlim=c(30,50))
+```
+
+
+
+
+
+
+
+```{r echo=F,message=F,warning=F}
+##re-set root path
 setwd(rootPath)
 ```
