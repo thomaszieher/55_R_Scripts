@@ -1,5 +1,5 @@
-setwd("F:\\55_check_ert\\01_DATA\\")
-
+setwd("..\\01_DATA\\")
+getwd()
 require(RColorBrewer)
 
 data=read.table("rmse_res_1.txt",header=F,sep=" ",stringsAsFactors=F)

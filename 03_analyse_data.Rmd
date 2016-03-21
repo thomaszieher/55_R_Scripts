@@ -1,11 +1,11 @@
 ---
-title: "Beregnungs-Monitoring"
+title: "Irrigation monitoring"
 author: "Thomas"
-date: "18. Februar 2016"
+date: "21. March 2016"
 output: html_document
 ---
 
-###Import data
+###Import and interpolate data
 ```{r echo=F,message=F,warning=F,include=F}
 require(spgrass6)
 require(rgdal)
@@ -19,6 +19,7 @@ rootPath=dirname(getwd())
 grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
 TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
 SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
+TRIGRSPath=paste(rootPath,"01_DATA","10_trigrs_singlecell\\data",sep="\\")
 
 setwd(rootPath)
 
@@ -96,7 +97,7 @@ timelist=data.frame(measurements=rlist)
 timelist["time"]=sprintf("%s:%s",substr(timelist$measurements,5,6),substr(timelist$measurements,8,9))
 
 ##set colors
-colorsERT=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(100)
+colorsERT=colorRampPalette(rev(brewer.pal(9,"PuBu")))(100)
 colors=rev(colorRampPalette(brewer.pal(9,"RdBu"))(100))
 #colors=rev(colorRampPalette(brewer.pal(9,"Spectral"))(10))
 
@@ -159,26 +160,26 @@ for (col in seq(1,ncols,by=1)){
 ```
 
 
-import raster and vector data from GRASS GIS location  
-inversion models rasterized with optimized (cross-validated) smoothed spline interpolation
+Import raster and vector data from GRASS GIS location  
+Inversion models interpolated with optimized (cross-validated) regularized spline with tension (RST)
 ```{r echo=F,message=F,warning=F}
 ##show first ert
-par(mfrow=c(1,1),mar=c(5,5,5,5),xaxs="i",yaxs="i")
+par(mfrow=c(1,1),mar=c(4,5,4,6),xaxs="i",yaxs="i")
 plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
 axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
 mtext(side=1,line=2.5,"Relative distance [m]")
-axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10)
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
 mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
 mtext(side=4,"Resistivity [Ohm m]",las=0,line=4.5)
-plot(rast0,col=colorsERT,add=T,axes=F,box=F)
-plot(irr_plot,add=T)
+plot(rast0,add=T,axes=F,box=F)#,zlim=c(0,1300))
+#plot(irr_plot,add=T)
 points(probesERT,pch=3,cex=0.5)
-points(dcpt.vect$coords.x1,dcpt.vect$coords.x2,cex=0.2)
+#points(dcpt.vect$coords.x1,dcpt.vect$coords.x2,cex=0.2)
 ```
 
 
 
-###Data range of first five inversion models
+###Value range of first five datasets
 First five measurements conducted before the beginning of irrigation experiment  
 Range assumed to represent the repeatability and uncertainties of the measurements  
 Generally higher uncertainties near the surface
@@ -196,7 +197,7 @@ par(mfrow=c(1,1),mar=c(5,5,5,5),xaxs="i",yaxs="i")
 plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
 axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
 mtext(side=1,line=2.5,"Relative distance [m]")
-axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10)
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
 mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
 mtext(side=4,"Range [Ohm m]",las=0,line=3.5)
 plot(rangeERT,add=T,axes=F,box=F)
@@ -218,20 +219,33 @@ material.before=as.Raster(readRAST6("before_mean"))
 ```
 
 
+Relative deviation from mean  
+```{r echo=F,message=F,warning=F}
+##plot spatial uncertainties
+par(mfrow=c(1,1),mar=c(5,5,5,5),oma=c(0,0,0,0),xaxs="i",yaxs="i")
+plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
+axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+mtext(side=1,line=2.5,"Relative distance [m]")
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
+mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+mtext(side=4,"Relative deviation [%]",las=0,line=3)
+plot((rangeERT/material.before)*100,axes=F,box=F,add=T,asp=1,zlim=c(0,4.5))
+```
 
-Mean uncertainties with depth  
+
+Mean deviation with depth (relative to mean of first five measurements)  
 ```{r echo=F,message=F,warning=F}
 ##relative proportion of range for differences
 start=2
 end=6
-xMin=-1
-xMax=1
+xMin=-0.5
+xMax=0.5
 cols.uncert=data.frame(run=start:end,col=colorRampPalette(rev(brewer.pal(5,"Set2")))(end-start+1),stringsAsFactors=F)
 ##plot
 par(mfrow=c(1,1),xaxs="i",yaxs="i")
 plot(NA,NA,type="l",col="red",ylim=c(47,0),xlim=c(xMin,xMax),axes=F,xlab="",ylab="")
 axis(side=1,at=seq(xMin,xMax,by=1))
-mtext(side=1,"Mean error [%]",line=2.5)
+mtext(side=1,"Mean deviation [%]",line=2.5)
 axis(side=2,at=seq(0,50,by=10),labels=seq(0,50,by=10)/10,las=1)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 abline(v=seq(xMin+1,xMax,by=1),lty=2,lwd=0.2,col="gray70")
@@ -252,25 +266,13 @@ legend("bottomright",legend=timelist$time[start:end],col=cols.uncert$col,lty=1)
 ```
 
 
-Relative uncertainties  
-```{r echo=F,message=F,warning=F}
-##plot spatial uncertainties
-par(mfrow=c(1,1),mar=c(5,5,5,5),oma=c(0,0,0,0),xaxs="i",yaxs="i")
-plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
-axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
-mtext(side=1,line=2.5,"Relative distance [m]")
-axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10)
-mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
-mtext(side=4,"Relative error [%]",las=0,line=3)
-plot((rangeERT/material.before)*100,axes=F,box=F,add=T,asp=1)
-```
-
 
 
 ###Overall changes
-Range of all datasets before tracer divided by material before (first five measurements)  
-Differences in the uppermost 1m due to irrigation  
-Differences below due to artefacts (changing contrast due to irrigation)  
+Range of all datasets before tracer divided by reference (mean of first five measurements)  
+Changes in the uppermost 1m due to irrigation  
+Changes below due to artefacts (changing contrast due to irrigation)  
+Water front did not reach bedrock (DCPT)  
 ```{r echo=F,message=F,warning=F}
 ##############################################################################
 ##r.series maps
@@ -288,11 +290,23 @@ rast.series=as.Raster(readRAST6(rastName))
 ##plot relative range-raster
 relRange=rast.series/material.before*100
 par(xaxs="i",yaxs="i")
-plot(relRange,zlim=c(0,25))
+par(mfrow=c(1,1),mar=c(5,5,5,5),oma=c(0,0,0,0),xaxs="i",yaxs="i")
+plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
+axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+mtext(side=1,line=2.5,"Relative distance [m]")
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
+mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+mtext(side=4,"Relative deviation [%]",las=0,line=3)
+plot(relRange,axes=F,box=F,add=T,asp=1,zlim=c(0,25))
 points(dcpt.vect,pch=20,cex=0.5)
 points(probesERT,pch=3,cex=0.5)
-mtext(side=4,line=4.5,"Relative value range [%]",las=0)
+mtext(side=4,line=4.5,"Relative range [%]",las=0)
+legend("bottomleft",legend=c("Probes","DCPT"),pch=c(3,20))
+```
 
+
+Mean overall changes with depth  
+```{r echo=F,message=F,warning=F}
 ##plot relative changes with depth
 relDiff=data.frame(diff=relRange@data@values)
 relDiff["depth"]=as.data.frame(raster(depth.mask))
@@ -300,13 +314,27 @@ relDiff["depth"]=as.data.frame(raster(depth.mask))
 relDiffStat=aggregate(relDiff,list(relDiff$depth),FUN=mean,na.rm=T)
 ##plot
 par(mfrow=c(1,1),xaxs="i",yaxs="i")
-plot(relDiffStat$diff,relDiffStat$depth-0.5,col="red",type="l",ylim=c(47,0),xlim=c(0,10),axes=F,xlab="",ylab="")
+plot(NA,NA,col="red",type="l",ylim=c(47,0),xlim=c(0,10),axes=F,xlab="",ylab="")
+
+##calculate mean relative uncertainties with depth
+abuncert=data.frame(uncert=((rangeERT/material.before)@data@values)*100)
+abuncert["depth"]=as.data.frame(raster(depth.mask))
+abuncertStat=aggregate(abuncert,list(abuncert$depth),FUN=mean,na.rm=T)
+##plot
+#lines(relDiffStat$diff-abuncertStat$uncert,abuncertStat$depth-0.5,col="black")
+#lines(relDiffStat$diff+abuncertStat$uncert,abuncertStat$depth-0.5,col="black")
+polygon(x=c(relDiffStat$diff-abuncertStat$uncert,rev(relDiffStat$diff+abuncertStat$uncert)),y=c(abuncertStat$depth-0.5,rev(abuncertStat$depth-0.5)),col="gray70",border=NA)
+
+##plot line
+lines(relDiffStat$diff,relDiffStat$depth-0.5,col="red")
+
 axis(side=1,at=seq(0,10,by=2.5))
-mtext(side=1,"Mean relative changes [%]",line=2.5)
+mtext(side=1,"Relative changes [%]",line=2.5)
 axis(side=2,at=seq(0,50,by=10),labels=seq(0,50,by=10)/10,las=1)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 abline(v=seq(2.5,10,by=2.5),lty=2,lwd=0.2,col="gray70")
 abline(h=seq(0,50,by=5),lty=2,lwd=0.2,col="gray70")
+legend("bottomright",legend=c("Mean overal changes","Mean uncertainty"),col=c("red","gray70"),pch=c(NA,15),lty=c(1,NA))
 ```
 
 
@@ -344,10 +372,9 @@ mtext(side=4,line=4,"Depth [dm]",las=0)
 
 
 
-###Plot mean absolute resistivity difference with depth for each time step
+###Plot mean relative resistivity ratio with depth for each time step
 Data restricted to uppermost 2m within irrigation plot (depth mask)  
-Absolute difference to mean of first five measurements  
---> Ratios worse??  
+Ratio to mean of first five measurements  
 ```{r echo=F,results=F,message=F,warning=F}
 ##############################################################################
 ##PLOTS
@@ -422,14 +449,14 @@ for (i in seq(startRaster,endRaster,by=1)){
 
   ##plot mean resistivity and sd with depth
   lines(data.mean$ratio,data.mean$depth,col=colors.runs[i-startRaster+1],lwd=4)
-  lines(data.mean$ratio+data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
-  lines(data.mean$ratio-data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
+  #lines(data.mean$ratio+data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
+  #lines(data.mean$ratio-data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
 }
-legend("bottomleft",legend=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M:%S"),col=colors.runs,lty=1,lwd=4,cex=0.8)
+legend("bottomleft",title="Time",legend=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M:%S"),col=colors.runs,lty=1,lwd=4,cex=0.8)
 ```
 
 
-Variation in resistivity difference with time per depth  
+Mean resistivity ratio per depth over time  
 ```{r echo=F,message=F,warning=F}
 #colors.depth=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(ncol(as.data.frame(t(ert.depth[,-1]))))#(9)#
 #matplot(x=as.POSIXct(ert.time[,1],origin="1970-01-01"),as.data.frame(t(ert.depth[,-1])),type="l",ylab="Resistivity difference [Ohm m]",xlab="Time",ylim=c(roundDown(min(ert.depth[,-1]),1),0),col=colors.depth,lty=1,axes=F)
@@ -440,14 +467,13 @@ depth.steps=c("0 - 10","10 - 20","20 - 30","30 - 40","40 - 50","50 - 60","60 - 7
 matplot(x=as.POSIXct(ert.time[,1],origin="1970-01-01"),as.data.frame(t(ert.depth[,-1]))[1:10],type="l",ylab="Resistivity ratio [%]",xlab="Time",ylim=c(roundDown(min(ert.depth[,-1]),1),0),col=colors.depth,lty=1,lwd=2,axes=F)
 axis(side=1,at=as.POSIXct(ert.time[,1],origin="1970-01-01"),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(roundUp(max(ert.depth[,-1]),1),roundDown(min(ert.depth[,-1]),10),by=-5))
-legend("bottomleft",legend=depth.steps,col=colors.depth,lty=1,lwd=2)
+legend("bottomleft",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2)
 ##############################################################################
 ```
 
 
 
 ###Recorded TDR data
-TDRs of upper profile  
 TDR at depth 40 did not record meaningful data
 ```{r echo=F,message=F,warning=F}
 ##############################################################################
@@ -483,8 +509,8 @@ dataTDR=dataTDR[format(dataTDR$date,format="%Y-%m-%d %H:%M:%S")>=day,]
 dataTDR=dataTDR[format(dataTDR$date,format="%Y-%m-%d")==as.POSIXct(measureday,format="%Y-%m-%d"),]
 
 ##set mindate and maxdate
-mindate=as.POSIXct(strptime("2014-07-24 13:00:00",format="%Y-%m-%d %H:%M:%S"))
-maxdate=as.POSIXct(strptime("2014-07-24 16:00:00",format="%Y-%m-%d %H:%M:%S"))
+mindate=as.POSIXct(strptime("2014-07-24 12:00:00",format="%Y-%m-%d %H:%M:%S"))
+maxdate=as.POSIXct(strptime("2014-07-24 19:00:00",format="%Y-%m-%d %H:%M:%S"))
 
 ##omit zeros
 dataTDR$vol[dataTDR$vol==0]=NA
@@ -529,115 +555,11 @@ legend("bottomright",title="Depth [cm]",legend=probes$depth,lwd=2,lty=1,col=prob
 ```
 
 
-
-###Saturation over time and depth
-Linear interpolation between recording times and Depth  
-Measurements smoothed by a defined window of time (40 min, )
-```{r echo=F,message=F,warning=F}
-from=2
-to=20
-colTDR=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(to)
-plot(NA,NA,type="l",xlim=c(32,42),ylim=c(100,0),xlab="Saturation [Vol%]",ylab="Depth [m]")
-for (i in from:to){
-  lines(t(colMeans(dataProbes[i,seq(1,ncol(dataProbes),by=3)])),probes$depth,col=colTDR[i])
-}
-legend("bottomleft",legend=timelist$time[from:to],col=colTDR,lty=1,cex=0.7)
-
-
-##convert to spatio-temporal raster
-##downscale to seconds and merge
-##get start and end time
-minTime=min(apply(dataProbes[grep("time",names(dataProbes))],2,min))
-maxTime=max(apply(dataProbes[grep("time",names(dataProbes))],2,max))
-
-sptempTDR=data.frame(time=seq(minTime,maxTime,by=1))
-#probe="16"
-for (probe in probes$nr){
-  sptempTDR=merge(sptempTDR,dataProbes[c(sprintf("time_%s",probe),sprintf("vol_%s",probe))],by.x="time",by.y=sprintf("time_%s",probe),all.x=T)
-}
-
-
-
-##temporal linear interpolation
-require(zoo)
-##na.approx from zoo package
-sptemp=na.omit(na.approx(sptempTDR))
-#matplot(sptemp[,2:4],type="l")
-
-##filter data.frame
-filterWindow=2400 ##seconds!!
-movingAverage=function(x,n){filter(x,rep(1/n,n),sides=1)}
-sptemp.filter=na.omit(data.frame(time=sptemp[,1],apply(sptemp[,2:4],2,movingAverage,n=filterWindow)))
-
-##linear interpolation with depth
-##extrapolation ok??
-transponded=data.frame(t(sptemp.filter))[-1,]
-transponded["depth"]=probes$depth
-
-##set up spatio-temporal raster
-minDepth=0
-maxDepth=100
-increment=5
-depthTDR=data.frame(depth=seq(minDepth,maxDepth,by=increment))
-depthTDR=merge(depthTDR,transponded,by="depth",all.x=T)##[,33239:33339]
-depthTDR=data.frame(na.approx(depthTDR,rule=1,na.rm=F))##rule=2 for extrapolation
-
-##convert to matrix
-TDRdata=as.matrix(depthTDR[,-depth])
-TDRtime=data.frame(time=as.POSIXct((as.numeric(as.POSIXct(strptime(measureday,format="%Y-%m-%d %H:%M:%S")))+12*60*60)+as.data.frame(sptempTDR)$time,origin="1970-01-01"))
-TDRtime["seconds"]=as.data.frame(sptempTDR)$time
-##cut off filtered ends (NA)
-TDRtime=TDRtime[-(1:filterWindow-1),]
-TDRtime=TDRtime[-((nrow(TDRtime)-(filterWindow-1)):nrow(TDRtime)),]
-
-##temporal subset
-##set mindate and maxdate (like above)
-mindate=as.POSIXct(strptime("2014-07-24 13:00:00",format="%Y-%m-%d %H:%M:%S"))
-maxdate=as.POSIXct(strptime("2014-07-24 16:00:00",format="%Y-%m-%d %H:%M:%S"))
-TDRdata.sub=TDRdata[,(TDRtime$time>=mindate)&(TDRtime$time<=maxdate)]
-
-##rasterize matrix
-TDRdatarast=raster(TDRdata.sub)
-##set extent (time relative to measureday)
-minTime.sec=TDRtime$seconds[TDRtime$time==mindate]
-maxTime.sec=TDRtime$seconds[TDRtime$time==maxdate]
-extent(TDRdatarast)=c(minTime.sec,maxTime.sec,minDepth-increment/2,maxDepth+increment/2)
-
-##plot
-par(xaxs="i",yaxs="i")
-plot(NA,NA,xlim=c(minTime.sec,maxTime.sec),ylim=c(minDepth,maxDepth),axes=F,ylab="",xlab="",asp=(maxTime.sec-minTime.sec)/(maxDepth-minDepth))
-timeTicks=seq(minTime.sec,maxTime.sec,by=1800)
-timeLabels=format(TDRtime$time[TDRtime$seconds%in%timeTicks],format="%H:%M")
-axis(side=1,at=timeTicks,labels=timeLabels)
-mtext(side=1,line=3,"Time")
-axis(side=2,at=seq(maxDepth,minDepth,by=-(increment*10)),labels=seq(minDepth/100,maxDepth/100,by=increment/10),las=1)
-mtext(side=2,line=3,"Depth [m]",las=0)
-mtext(side=4,line=2.5,"Water content [Vol%]",las=0)
-plot(TDRdatarast,col=rev(colors),add=T,zlim=c(32,40))
-
-
-##plot measurements as points
-##cut off NAs caused by filtering
-measurePoints=sptempTDR[-(1:filterWindow-1),]
-measurePoints=measurePoints[-((nrow(measurePoints)-(filterWindow-1)):nrow(measurePoints)),]
-
-##plot measurement times per depth
-depth1=na.omit(data.frame(TDRtime,measurePoints[,2]))
-points(x=depth1$seconds,y=rep(maxDepth-20,length(depth1$seconds)),pch=20)##raster built in reverserd y
-depth2=na.omit(data.frame(TDRtime,measurePoints[,3]))
-points(x=depth2$seconds,y=rep(maxDepth-60,length(depth2$seconds)),pch=20)##raster built in reverserd y
-depth3=na.omit(data.frame(TDRtime,measurePoints[,4]))
-points(x=depth3$seconds,y=rep(maxDepth-75,length(depth3$seconds)),pch=20)##raster built in reverserd y
-```
-
-
-
-
 ###Compare soil moisture and resistivity
-First fit a scaled logistic time-dependent model to variation of resistivity difference in the depths corresponding to the TDR depths  
-Then extract the resistivity values at the time of TDR measurements  
-Comparison of resistivity difference and corresponding volumetric water content and fitting a linear model  
---> 4D inversion better??  
+...not necessary for further steps, but interesting...  
+1. Fitting of a scaled logistic time-dependent model to variation of resistivity ratio in the depths corresponding to the TDR depths  
+2. Extraction of the resistivity values corresponding to the time of TDR measurements  
+3. Comparison of resistivity ratio and corresponding volumetric water content and fitting a linear model (poly, exp etc. does not yield better results...)  
 ```{r echo=F,message=F,warning=F}
 ##############################################################################
 ##Compare decrease in resistivity with increase in soil moisture
@@ -647,8 +569,8 @@ depthcols=colorRampPalette(rev(brewer.pal(10,"RdYlGn")))(length(depthList))
 depths=data.frame(depth=depthList,cols=depthcols,stringsAsFactors=F)
 par(xaxs="i",yaxs="i",pty="s")
 #plot(NA,NA,,xlim=c(30,45),ylim=c(0,-40),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]")
-#depth=20
-for (depth in depths$depth){
+depth=20
+#for (depth in depths$depth){
   ##data of desired depth
   depthData=as.data.frame(t(ert.depth[,-1]))[round(depth/10)]
   names(depthData)=c("resDiff")
@@ -670,7 +592,7 @@ for (depth in depths$depth){
   ##plot model
   fitData=data.frame(seconds=seq(min(depthData$seconds),max(depthData$seconds),by=1))
   fitData["resist"]=-coef(Fit)[3]*(1/(1+exp(coef(Fit)[1]+coef(Fit)[2]*fitData$seconds)))
-  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-10,0),ylab="Resistivity difference [Ohm m]",xlab="Time [s]",las=1)
+  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-10,0),ylab="Resistivity ratio [%]",xlab="Time [s]",las=1)
   lines(fitData$seconds,fitData$resist,col="red")
   
   ##tdr data at depth
@@ -678,16 +600,144 @@ for (depth in depths$depth){
   ##get time in seconds from measureday 12:00:00
   dataTDR.sub["seconds"]=as.numeric(as.POSIXct(dataTDR.sub$date))-(as.numeric(as.POSIXct(strptime(measureday,format="%Y-%m-%d %H:%M:%S")))+12*60*60)
   fused=merge(subset(dataTDR.sub,seconds%in%fitData$seconds),subset(fitData,seconds%in%dataTDR.sub$seconds),by="seconds")
-  plot(NA,NA,xlim=c(32,42),ylim=c(0,-10),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]",las=1)
+  plot(NA,NA,xlim=c(32,42),ylim=c(0,-10),ylab="Resistivity ratio [%]",xlab="Soil moisture [Vol%]",las=1)
   points(fused$vol,fused$resist,col=depths$cols[depths$depth==depth])
   
   linFit=lm(resist~vol,data=fused)
-  summary(linFit)
+  ##summary(linFit)
   abline(linFit,col=depths$cols[depths$depth==depth])
-}
-legend("bottomright",legend=depths$depth,title="Depth [cm]",col=depths$cols,pch=c(1,1,1),lty=c(1,1,1))
+  
+  ##fit after beff et al. 2013 (did not work, alternative)
+  ##however, it always results in a linear relationship...
+#   settings=nls.control(maxiter=100,minFactor=1/(1024*10))
+#   expFit=nls(-resist~a*exp(vol/100.0)+b,
+#              data=fused,
+#              algorithm="port",
+#              start=list(a=2,b=1),
+#              trace=T,
+#              settings)
+#   x=seq(30,50,1)
+#   y=coef(expFit)[1]*exp(x/100)+coef(expFit)[2]
+#   lines(x,-y)
+#}
+#legend("bottomright",legend=depths$depth,title="Depth [cm]",col=depths$cols,pch=c(1,1,1),lty=c(1,1,1))
+legend("bottomright",legend=depth,title="Depth [cm]",col=depths$cols,pch=c(1,1,1),lty=c(1,1,1))
+print(sprintf("R-squared: %0.3f",summary(linFit)$r.squared))
 ```
 
+
+###Convert Resistivity Ratios to Water content  
+Initial state: linear inter-/extrapolation of recorded water content before irrigation (TDRs) with depth  
+```{r echo=F,message=F,warning=F}
+##set desired depth
+depthWater=10 ##dm
+##get mean of TDR measurements 1h before irrigation
+TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(13*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
+##get mean of TDR measurements 1h after irrigation
+TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(18*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
+#boxplot(TDRafter)
+#mean(colMeans(TDRafter))
+TDRstart=data.frame(nr=probes$nr,depth=probes$depth,vol=colMeans(TDRbefore))
+plot(TDRstart$vol,TDRstart$depth,ylim=c(depthWater*10,0),xlim=c(32,48),type="l",col="blue",lwd=2,ylab="",xlab="")
+mtext(side=1,"Water content [%]",line=2.5)
+mtext(side=2,"Depth [cm]",line=3,las=0)
+points(TDRbefore[,1],rep(TDRstart$depth[1],nrow(TDRbefore)),pch=3,cex=0.5)
+points(TDRbefore[,2],rep(TDRstart$depth[2],nrow(TDRbefore)),pch=3,cex=0.5)
+points(TDRbefore[,3],rep(TDRstart$depth[3],nrow(TDRbefore)),pch=3,cex=0.5)
+
+##fit linear model to mean
+TDRfit=lm(TDRstart$vol~TDRstart$depth)
+TDRexp=data.frame(depth=seq(10,depthWater*10,by=10))
+TDRexp["volexp"]=coef(TDRfit)[1]+TDRexp$depth*coef(TDRfit)[2]
+lines(TDRexp$volexp,TDRexp$depth,col="red",lty=2,lwd=2)
+
+##convert resistivity ratio to water content
+rRatio=ert.depth[1:depthWater,-1]
+
+##use linear relationship of resistivity ratio and water content (does not work!)
+#coef(linFit)[2]
+##calculate ratio change between time steps
+# tempRatio=data.frame()
+# for (i in 2:nrow(rRatio)){
+#   tempRatio=rbind(tempRatio,rRatio[i,]-rRatio[i-1,])
+# }
+# colnames=c()
+# for (i in 1:ncol(rRatio)){
+#   colnames=c(colnames,sprintf("X%i",i))
+# }
+# names(tempRatio)=colnames
+# matplot(tempRatio,type="l")
+```
+
+
+Final state: same water content at all depths (TDR's mean water content after irrigation)  
+```{r echo=F,message=F,warning=F}
+##scale restistivity ratios to water content
+scaleRatio=data.frame()
+scaleRatioRel=data.frame()
+##same max. value in all depths, derived from mean of all measurements after no change with irrigation (15.00h)
+TDRmax=mean(colMeans(TDRafter))
+depth=1
+for (depth in 1:nrow(rRatio)){
+  ##interpolated water content before irrigation
+  TDRmin=TDRexp$volexp[depth]
+  ##target scale
+  scaleTDR=TDRmax-TDRmin
+  
+  ##resistivity ratios in depth
+  ratios=rRatio[depth,]
+  ratiosMin=ratios[1]
+  ratiosMax=ratios[length(ratios)]
+  ##scaled ratios
+  ratiosScaled=TDRmin+(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ratiosScaledRel=(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ##and append to data.frame
+  scaleRatio=rbind(scaleRatio,ratiosScaled)
+  scaleRatioRel=rbind(scaleRatioRel,ratiosScaledRel)
+}
+matplot(t(scaleRatio),type="l",ylab="",xlab="",axes=F,col=colors.depth,lty=1,ylim=c(34,40))
+axis(side=1,at=seq(1:ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(34,40,1),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Water content [%]",line=2.5,las=0)
+legend("bottomright",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2,cex=0.7)
+```
+
+
+###Plot water content with depth over time  
+```{r echo=F,message=F,warning=F}
+##build matrix
+RatioData=as.matrix(scaleRatio)
+RatioDataRel=as.matrix(scaleRatioRel)
+
+##rasterize matrix
+RatioDatarast=raster(RatioData)
+RatioDataRelrast=raster(RatioDataRel)
+
+##interpolate??
+
+##plot
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=4,"Water content [%]",las=0)
+plot(RatioDatarast,col=rev(colors),add=T,zlim=c(32,40))
+
+
+##plot
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+##cut off negative values
+RatioDataRelrast[RatioDataRelrast<0]=0
+mtext(side=4,line=4,"Change in water content [%]",las=0)
+plot(RatioDataRelrast,col=rev(colors),add=T,zlim=c(0,5.5))
+```
 
 
 
@@ -719,7 +769,7 @@ Gardner=function(psi,theta_r,theta_s,alpha){
 }
 
 ##PLOT DATA
-par(mfrow=c(1,1),las=1)
+par(mfrow=c(1,1),las=1,mar=c(4,4,4,4))
 ##test fitting
 element="Bonacker1"#Fur"##"gem"##
 subdata=na.omit(data[,grep(element,names(data))])
@@ -735,7 +785,7 @@ lines(means$mean,means$potential,xlim=c(0,0.8),type="b",pch=19,lwd=2,lty=3)
 #plot(means$mean,means$potential,xlim=c(0,0.8),ylim=c(0,7),type="b",pch=19,lwd=2,lty=3)
 ##add legend
 #legend("topright",inset=0.01,legend=c(names(subdata),"MEAN"),pch=1,col=c(1,2,3,4,5),horiz=F,box.col="white")
-legend("topright",inset=0.01,legend=c(names(subdata)),lty=1,pt.cex=2,cex=1,col=seq(1,ncol(subdata)),horiz=F,box.col="white")
+legend("topright",title="Laboratory tests",inset=0.01,legend=c(names(subdata)),lty=1,pt.cex=2,cex=1,col=seq(1,ncol(subdata)),horiz=F,box.col="white")
 grid()
 
 
@@ -764,14 +814,31 @@ fit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
         trace=F,#T,
         settings
 )
-
 psi=seq(0,5,by=0.2)
 wc=vanGenuchten(psi,coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
-lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5))
+lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2)
+
+
+gardenerFit=nls(vol~Gardner(potential,theta_r,theta_s,alpha),
+        data=data.fit,
+        start=list(theta_r=0.15,theta_s=0.5,alpha=0.15),
+        algorithm="port",
+        lower=c(0.0,0.45,0.05),
+        upper=c(0.4,0.7,1),
+        trace=F,#T,
+        settings
+)
+psi=seq(0,5,by=0.2)
+wc=Gardner(psi,coef(gardenerFit)[1],coef(gardenerFit)[2],coef(gardenerFit)[3])
+lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2,lty=2)
+
+#wc=Gardner(psi,0.2,0.55,20)
+#lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="red")
+legend("bottomleft",legend=c("Mean curve","van Genuchten Fit","Gardner Fit"),lty=c(3,1,2),lwd=c(2,2,2),pch=c(19,NA,NA),col=c("black","blue","blue"))
 ```
 
 
-calculate suction  
+Calculate suction via fitted van Genuchten model  
 ```{r echo=F,message=F,warning=F}
 ##reverse van genuchten model (van Genuchten 1980)
 revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
@@ -780,31 +847,59 @@ revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
 }
 
 ##plot(seq(0,1,0.01),revVanGenuchten(seq(0,1,0.01),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4]),log="y")
-suction.sub=revVanGenuchten(data.frame(TDRdata.sub/100),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
+suction.sub=revVanGenuchten(data.frame(RatioData/100.0),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
+
+##convert to mm Wassersaeule
+suction.sub=suction.sub/-100.0
 
 ##rasterize matrix
 Suctionrast=raster(suction.sub)
-##set extent (time relative to measureday)
-minTime.sec=TDRtime$seconds[TDRtime$time==mindate]
-maxTime.sec=TDRtime$seconds[TDRtime$time==maxdate]
-extent(Suctionrast)=c(minTime.sec,maxTime.sec,minDepth-increment/2,maxDepth+increment/2)
 
-##plot
-par(xaxs="i",yaxs="i")
-plot(NA,NA,xlim=c(minTime.sec,maxTime.sec),ylim=c(minDepth,maxDepth),axes=F,ylab="",xlab="",asp=(maxTime.sec-minTime.sec)/(maxDepth-minDepth))
-timeTicks=seq(minTime.sec,maxTime.sec,by=1800)
-timeLabels=format(TDRtime$time[TDRtime$seconds%in%timeTicks],format="%H:%M")
-axis(side=1,at=timeTicks,labels=timeLabels)
-mtext(side=1,line=3,"Time")
-axis(side=2,at=seq(maxDepth,minDepth,by=-(increment*10)),labels=seq(minDepth/100,maxDepth/100,by=increment/10),las=1)
-mtext(side=2,line=3,"Depth [m]",las=0)
-mtext(side=4,line=3.5,"Suction [hPa]",las=0)
-plot(Suctionrast,col=(colors),add=T,zlim=c(30,50))
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=5,"Pressure head [m]",las=0)
+plot(Suctionrast,col=rev(colors),add=T,zlim=c(-0.5,-0.2))
 ```
 
 
+###Compare to model results
+Unsaturated initial conditions  
+```{r echo=F,message=F,warning=F}
+setwd(TRIGRSPath)
 
+require(raster)
+require(RColorBrewer)
 
+##read data
+data=read.table("pwp_time.txt",header=T,sep=",")
+##remove time
+data.c=data[,-1]
+##create color ramp
+cols=colorRampPalette(brewer.pal(3,"RdBu"))(100)
+##convert to matrix
+data.m=as.matrix(t(data.c)[1:10,])
+data.r=raster(data.m)
+
+##scale in regard to measurements
+zMin=-0.5
+zMax=-0.2
+data.r[data.r>zMax]=zMax
+data.r[data.r<zMin]=zMin
+
+##plot
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(0,1,length.out=14),labels=seq(0,65,by=5))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time [min]",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=5,"Pressure head [m]",las=0)
+plot(data.r,col=cols,zlim=c(zMin,zMax),add=T)
+```
 
 
 
