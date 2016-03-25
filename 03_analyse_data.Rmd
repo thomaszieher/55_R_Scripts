@@ -244,7 +244,7 @@ cols.uncert=data.frame(run=start:end,col=colorRampPalette(rev(brewer.pal(5,"Set2
 ##plot
 par(mfrow=c(1,1),xaxs="i",yaxs="i")
 plot(NA,NA,type="l",col="red",ylim=c(47,0),xlim=c(xMin,xMax),axes=F,xlab="",ylab="")
-axis(side=1,at=seq(xMin,xMax,by=1))
+axis(side=1,at=seq(xMin,xMax,by=0.25))
 mtext(side=1,"Mean deviation [%]",line=2.5)
 axis(side=2,at=seq(0,50,by=10),labels=seq(0,50,by=10)/10,las=1)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
@@ -296,11 +296,10 @@ axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
 mtext(side=1,line=2.5,"Relative distance [m]")
 axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
 mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
-mtext(side=4,"Relative deviation [%]",las=0,line=3)
+mtext(side=4,"Relative change [%]",las=0,line=3)
 plot(relRange,axes=F,box=F,add=T,asp=1,zlim=c(0,25))
 points(dcpt.vect,pch=20,cex=0.5)
 points(probesERT,pch=3,cex=0.5)
-mtext(side=4,line=4.5,"Relative range [%]",las=0)
 legend("bottomleft",legend=c("Probes","DCPT"),pch=c(3,20))
 ```
 
@@ -362,7 +361,14 @@ dcptRast=rast0
 dcptRast@data@values=dcpt.mask
 
 ##plot
-plot(depthRast)
+plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
+axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+mtext(side=1,line=2.5,"Relative distance [m]")
+axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
+mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+mtext(side=4,"Relative change [%]",las=0,line=3)
+plot(depthRast,axes=F,box=F,add=T,asp=1)
+
 plot(irr_plot,add=T)
 points(probesERT,pch=3,cex=0.5)
 mtext(side=4,line=4,"Depth [dm]",las=0)
