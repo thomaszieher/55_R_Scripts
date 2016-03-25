@@ -97,7 +97,9 @@ timelist=data.frame(measurements=rlist)
 timelist["time"]=sprintf("%s:%s",substr(timelist$measurements,5,6),substr(timelist$measurements,8,9))
 
 ##set colors
-colorsERT=colorRampPalette(rev(brewer.pal(9,"PuBu")))(100)
+colorsERT=colorRampPalette(rev(brewer.pal(9,"PuBu")))(90)
+##add white
+colorsERT=c(colorsERT,c("#FFFFFF"))
 colors=rev(colorRampPalette(brewer.pal(9,"RdBu"))(100))
 #colors=rev(colorRampPalette(brewer.pal(9,"Spectral"))(10))
 
@@ -118,6 +120,12 @@ probesERT=readVECT6("sond_pos")
 
 ##import irrigation plot
 irr_plot=readVECT6("irrig_plot")
+
+##import ert mask
+irr_mask=readVECT6("mask")
+
+##import irrigation plot border
+irr_border=readVECT6("border_irrplot")
 
 ##import dcpt data
 dcpt.vect=readVECT6(vname="dcpt_points")
@@ -388,7 +396,7 @@ Ratio to mean of first five measurements
 ##from start of irrigation
 startRaster=2
 ##until irrigation
-endRaster=17
+endRaster=16
 ##all measurements
 #endRaster=51
 
@@ -415,7 +423,7 @@ abline(v=c(0))
 #noise.max=0.26
 #noise.min=-noise.max
 
-i=2
+i=17
 ert.time=data.frame()
 ert.depth=data.frame(NA)
 for (i in seq(startRaster,endRaster,by=1)){
@@ -439,6 +447,30 @@ for (i in seq(startRaster,endRaster,by=1)){
   ##only negative values
   diff@data@values[diff@data@values>0]=0
 
+  ##plot infiltration
+  ##uncertainty 3%
+  pdf(sprintf("irrig_%0.2i.pdf",i))
+  #png(sprintf("irrig_%0.2i.png",i))
+  uncert=-2
+  diff.plot=diff
+  diff.plot[diff.plot@data@values>=uncert]=0
+  par(xaxs="i",yaxs="i")
+  plot(NA,NA,xlim=c(25,200),ylim=c(-110,-20),axes=F,xlab="",ylab="",asp=1)
+  #axis(side=1,at=seq(0,250,by=50),labels=seq(0,250,by=50)/10)
+  #mtext(side=1,line=2.5,"Relative distance [m]")
+  #axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
+  #mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
+  #mtext(side=4,"Relative change [%]",las=0,line=3)
+  scalebar(20)
+  plot(diff.plot,col=colorsERT,add=T,zlim=c(-20,0))
+  plot(irr_mask,add=T,lty=2,lwd=0.5)
+  plot(irr_border,add=T,lty=2,lwd=0.5)
+  points(probesERT,pch=3,cex=0.5)
+  points(dcpt.vect,pch=20,cex=0.3)
+  text(180,-20,format(timestep,format="%H:%M"),cex=2)
+  
+  dev.off()
+  
   ##data.frame with resistivity and depth
   data=as.data.frame(diff@data@values)
   data["depth"]=as.data.frame(depthRast)
