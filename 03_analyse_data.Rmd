@@ -322,7 +322,8 @@ abuncertStat=aggregate(abuncert,list(abuncert$depth),FUN=mean,na.rm=T)
 ##plot
 #lines(relDiffStat$diff-abuncertStat$uncert,abuncertStat$depth-0.5,col="black")
 #lines(relDiffStat$diff+abuncertStat$uncert,abuncertStat$depth-0.5,col="black")
-polygon(x=c(relDiffStat$diff-abuncertStat$uncert,rev(relDiffStat$diff+abuncertStat$uncert)),y=c(abuncertStat$depth-0.5,rev(abuncertStat$depth-0.5)),col="gray70",border=NA)
+polygon(x=na.omit(c(relDiffStat$diff-abuncertStat$uncert,rev(relDiffStat$diff+abuncertStat$uncert))),
+        y=na.omit(c(abuncertStat$depth-0.5,rev(abuncertStat$depth-0.5))),col="gray70",border=NA)
 
 ##plot line
 lines(relDiffStat$diff,relDiffStat$depth-0.5,col="red")
