@@ -643,19 +643,34 @@ TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(13*60*60))&
 TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(18*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
 #boxplot(TDRafter)
 #mean(colMeans(TDRafter))
-TDRstart=data.frame(nr=probes$nr,depth=probes$depth,vol=colMeans(TDRbefore))
-plot(TDRstart$vol,TDRstart$depth,ylim=c(depthWater*10,0),xlim=c(32,48),type="l",col="blue",lwd=2,ylab="",xlab="")
+
+##fit linear model and extrapolate initial water content
+TDRdata=rbind(data.frame(vol=TDRbefore[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[1],5,7))])),
+      data.frame(vol=TDRbefore[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[2],5,7))])),
+      data.frame(vol=TDRbefore[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[3],5,7))])))
+
+TDRdataAfter=rbind(data.frame(vol=TDRafter[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[1],5,7))])),
+      data.frame(vol=TDRafter[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[2],5,7))])),
+      data.frame(vol=TDRafter[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[3],5,7))])))
+##extrapolate initial soil moisture
+TDRexp=data.frame(depth=seq(0,100,10),volexp=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=seq(0,100,10))))
+
+##plot soil moisture with depth before and after irrigation
+plot(NA,NA,ylim=c(100,0),xlim=c(32,42),xlab="",ylab="")
 mtext(side=1,"Water content [%]",line=2.5)
 mtext(side=2,"Depth [cm]",line=3,las=0)
-points(TDRbefore[,1],rep(TDRstart$depth[1],nrow(TDRbefore)),pch=3,cex=0.5)
-points(TDRbefore[,2],rep(TDRstart$depth[2],nrow(TDRbefore)),pch=3,cex=0.5)
-points(TDRbefore[,3],rep(TDRstart$depth[3],nrow(TDRbefore)),pch=3,cex=0.5)
+##first plot 95% ci's
+ci=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
+ci2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
+polygon(c(ci[,2],rev(ci[,3])),c(0:100,100:0),border=F,col="gray80")
+polygon(c(ci2[,2],rev(ci2[,3])),c(0:100,100:0),border=F,col="gray80")
+##plot lms
+points(TDRdata$vol,TDRdata$depth,pch=3,cex=0.7,col="red")
+lines(ci[,1],seq(0,100),type="l",col="red",lwd=2)
+points(TDRdataAfter$vol,TDRdataAfter$depth,pch=2,cex=0.7,col="blue")
+lines(ci2[,1],seq(0,100),type="l",col="blue",lwd=2)
+legend("bottomleft",legend=c("Before irrigation","After irrigation"),pch=c(3,2),lty=c(1,1),col=c("red","blue"))
 
-##fit linear model to mean
-TDRfit=lm(TDRstart$vol~TDRstart$depth)
-TDRexp=data.frame(depth=seq(10,depthWater*10,by=10))
-TDRexp["volexp"]=coef(TDRfit)[1]+TDRexp$depth*coef(TDRfit)[2]
-lines(TDRexp$volexp,TDRexp$depth,col="red",lty=2,lwd=2)
 
 ##convert resistivity ratio to water content
 rRatio=ert.depth[1:depthWater,-1]
