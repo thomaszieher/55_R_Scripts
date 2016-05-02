@@ -1,8 +1,11 @@
-setwd("..\\01_DATA\\")
+setwd("F:\\55_check_ert")
 getwd()
 require(RColorBrewer)
 
-data=read.table("rmse_res_1.txt",header=F,sep=" ",stringsAsFactors=F)
+
+#data=read.table("monprof_res_01.txt",header=F,sep=" ",stringsAsFactors=F)
+#data=read.table("slopeprof_res_05.txt",header=F,sep=" ",stringsAsFactors=F)
+data=read.table("valprof_res_05.txt",header=F,sep=" ",stringsAsFactors=F)
 names(data)=c("tension","smooth","rmse")
 
 cols=colorRampPalette(brewer.pal(6,"Spectral"))(length(unique(data$smooth)))

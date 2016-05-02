@@ -3,8 +3,9 @@ require(rgdal)
 require(foreign)
 
 rootPath="F:\\55_check_ert"
-filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_monitor30_bonacker"
-##filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_lang120_bonacker"
+##filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_monitor30_bonacker"
+filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_lang120_bonacker"
+##filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_validierung30_bonacker"
 grassPath="F:\\55_check_ert\\01_DATA\\grass"
 setwd(rootPath)
 
@@ -18,17 +19,24 @@ roundDown=function(x,to){
 
 ##settings
 location="Laterns"
+
 ##monitoring profile
-fileIn="24-07-2014_13-25-00.DAT"
-maskFile="bonacker_monitoring_mask.shp"
-resolution="1" ##1 dm
-mapset="ERT_bonacker_validation"
+# fileIn="24-07-2014_13-25-00.DAT"
+# maskFile="bonacker_monitoring_mask.shp"
+# resolution="1" ##1 dm
+# mapset="ERT_bonacker_interpolation"
+
+##monitoring profile
+# fileIn="24-07-2014_13-10-00.DAT"
+# maskFile="bonacker_validation_mask.shp"
+# resolution="5" ##1 dm
+# mapset="ERT_validation"
 
 ##slope profile
-#fileIn="bf2_lang_120m_2014-07-24_11-00-00_Messung1_aligned.DAT"
-#maskFile="bonacker_slope_mask.shp"
-#resolution="1"
-#mapset="ERT_slope_bonacker"
+fileIn="bf2_lang_120m_2014-07-24_11-00-00_Messung1_aligned.DAT"
+maskFile="bonacker_slope_mask.shp"
+resolution="1"
+mapset="ERT_slope_bonacker"
 
 ##set GRASS environment
 initGRASS(gisBase="C:\\QGIS\\apps\\grass\\grass-6.4.3",

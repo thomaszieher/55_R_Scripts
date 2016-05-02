@@ -9,12 +9,21 @@ setwd(rootPath)
 location="Laterns"
 grassPath="F:\\55_check_ert\\01_DATA\\grass"
 
-##slope
-filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_lang120_bonacker"
-maskFile="bonacker_slope_mask.shp"
-resolution="5"
-mapset="ERT_slopebonacker"
-fileList=c("bf2_lang_120m_2014-07-24_11-00-00_Messung1_aligned.DAT","bf2_lang_120m_2014-07-24_11-20-00_Messung2_aligned.DAT")
+##slope profile
+# filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_lang120_bonacker"
+# fileList=c("bf2_lang_120m_2014-07-24_11-00-00_Messung1_aligned.DAT","bf2_lang_120m_2014-07-24_11-20-00_Messung2_aligned.DAT")
+# resolution="5"
+# mapset="ERT_slopebonacker"
+# maskFile="bonacker_slope_mask.shp"
+
+
+##validation profile
+filesPath="F:\\55_check_ert\\01_DATA\\Geoelektrik_Auswertung\\Bonacker\\2014_07_24_gp_validierung30_bonacker"
+fileList=c("24-07-2014_13-15-00.DAT")
+resolution="2"
+mapset="ERT_validation"
+maskFile="bonacker_validation_mask.shp"
+
 setwd(filesPath)
 
 ##interpolation settings

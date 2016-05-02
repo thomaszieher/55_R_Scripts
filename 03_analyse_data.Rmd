@@ -15,7 +15,8 @@ require(RColorBrewer)
 require(qpcR)
 
 ##set parent directory
-rootPath=dirname(getwd())
+#rootPath=dirname(getwd())
+rootPath="F:\\55_check_ert"
 grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
 TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
 SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
@@ -671,9 +672,9 @@ Initial state: linear inter-/extrapolation of recorded water content before irri
 ##set desired depth
 depthWater=10 ##dm
 ##get mean of TDR measurements 1h before irrigation
-TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(13*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
+TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(12*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
 ##get mean of TDR measurements 1h after irrigation
-TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(18*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
+TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(15*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
 #boxplot(TDRafter)
 #mean(colMeans(TDRafter))
 
@@ -952,7 +953,7 @@ axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time [min]",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 mtext(side=4,line=5,"Pressure head [m]",las=0)
-plot(data.r,col=cols,zlim=c(zMin,zMax),add=T)
+plot(data.r,col=rev(colors),zlim=c(zMin,zMax),add=T)
 ```
 
 
