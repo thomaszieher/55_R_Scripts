@@ -13,6 +13,8 @@ require(foreign)
 require(raster)
 require(RColorBrewer)
 require(qpcR)
+require(lattice)
+require(pracma)
 
 ##set parent directory
 #rootPath=dirname(getwd())
@@ -592,6 +594,23 @@ abline(v=xticks,lty=2,lwd=0.5,col="gray70")
 abline(h=seq(minY,maxY,10),lty=2,lwd=0.5,col="gray70")
 
 legend("bottomright",title="Depth [cm]",legend=probes$depth,lwd=2,lty=1,col=probes$cols,bty="n",cex=0.8)
+
+
+##reformat tdr records
+##get mean of TDR measurements 1h before irrigation
+TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(12*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
+##get mean of TDR measurements 1h after irrigation
+TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(15*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
+#boxplot(TDRafter)
+#mean(colMeans(TDRafter))
+
+TDRdata=rbind(data.frame(vol=TDRbefore[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[1],5,7))])),
+      data.frame(vol=TDRbefore[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[2],5,7))])),
+      data.frame(vol=TDRbefore[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[3],5,7))])))
+
+TDRdataAfter=rbind(data.frame(vol=TDRafter[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[1],5,7))])),
+      data.frame(vol=TDRafter[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[2],5,7))])),
+      data.frame(vol=TDRafter[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[3],5,7))])))
 ```
 
 
@@ -632,8 +651,12 @@ depth=20
   ##plot model
   fitData=data.frame(seconds=seq(min(depthData$seconds),max(depthData$seconds),by=1))
   fitData["resist"]=-coef(Fit)[3]*(1/(1+exp(coef(Fit)[1]+coef(Fit)[2]*fitData$seconds)))
-  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-10,0),ylab="Resistivity ratio [%]",xlab="Time [s]",las=1)
+  plot(depthData$seconds,depthData$resDiff,type="p",ylim=c(-10,0),ylab="",xlab="",las=1,axes=F)
+  axis(side=1,at=depthData$seconds,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+  axis(side=2,at=seq(0,-10,-2),las=1)
+  mtext(side=2,"Resistivity ratio [%]",line=2.5,las=0)
   lines(fitData$seconds,fitData$resist,col="red")
+
   
   ##tdr data at depth
   dataTDR.sub=dataTDR[dataTDR$probe==probes$nr[probes$depth==depth],]
@@ -666,136 +689,6 @@ print(sprintf("R-squared: %0.3f",summary(linFit)$r.squared))
 ```
 
 
-###Convert Resistivity Ratios to Water content  
-Initial state: linear inter-/extrapolation of recorded water content before irrigation (TDRs) with depth  
-```{r echo=F,message=F,warning=F}
-##set desired depth
-depthWater=10 ##dm
-##get mean of TDR measurements 1h before irrigation
-TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(12*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
-##get mean of TDR measurements 1h after irrigation
-TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(15*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
-#boxplot(TDRafter)
-#mean(colMeans(TDRafter))
-
-##fit linear model and extrapolate initial water content
-TDRdata=rbind(data.frame(vol=TDRbefore[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[1],5,7))])),
-      data.frame(vol=TDRbefore[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[2],5,7))])),
-      data.frame(vol=TDRbefore[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRbefore)[3],5,7))])))
-
-TDRdataAfter=rbind(data.frame(vol=TDRafter[,1],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[1],5,7))])),
-      data.frame(vol=TDRafter[,2],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[2],5,7))])),
-      data.frame(vol=TDRafter[,3],depth=rep(probes$depth[probes$nr==as.numeric(substr(names(TDRafter)[3],5,7))])))
-##extrapolate initial soil moisture
-TDRexp=data.frame(depth=seq(0,100,10),volexp=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=seq(0,100,10))))
-
-##plot soil moisture with depth before and after irrigation
-plot(NA,NA,ylim=c(100,0),xlim=c(32,42),xlab="",ylab="")
-mtext(side=1,"Water content [%]",line=2.5)
-mtext(side=2,"Depth [cm]",line=3,las=0)
-##first plot 95% ci's
-ci=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
-ci2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
-polygon(c(ci[,2],rev(ci[,3])),c(0:100,100:0),border=F,col="gray80")
-polygon(c(ci2[,2],rev(ci2[,3])),c(0:100,100:0),border=F,col="gray80")
-##plot lms
-points(TDRdata$vol,TDRdata$depth,pch=3,cex=0.7,col="red")
-lines(ci[,1],seq(0,100),type="l",col="red",lwd=2)
-points(TDRdataAfter$vol,TDRdataAfter$depth,pch=2,cex=0.7,col="blue")
-lines(ci2[,1],seq(0,100),type="l",col="blue",lwd=2)
-legend("bottomleft",legend=c("Before irrigation","After irrigation"),pch=c(3,2),lty=c(1,1),col=c("red","blue"))
-
-
-##convert resistivity ratio to water content
-rRatio=ert.depth[1:depthWater,-1]
-
-##use linear relationship of resistivity ratio and water content (does not work!)
-#coef(linFit)[2]
-##calculate ratio change between time steps
-# tempRatio=data.frame()
-# for (i in 2:nrow(rRatio)){
-#   tempRatio=rbind(tempRatio,rRatio[i,]-rRatio[i-1,])
-# }
-# colnames=c()
-# for (i in 1:ncol(rRatio)){
-#   colnames=c(colnames,sprintf("X%i",i))
-# }
-# names(tempRatio)=colnames
-# matplot(tempRatio,type="l")
-```
-
-
-Final state: same water content at all depths (TDR's mean water content after irrigation)  
-```{r echo=F,message=F,warning=F}
-##scale restistivity ratios to water content
-scaleRatio=data.frame()
-scaleRatioRel=data.frame()
-##same max. value in all depths, derived from mean of all measurements after no change with irrigation (15.00h)
-TDRmax=mean(colMeans(TDRafter))
-depth=1
-for (depth in 1:nrow(rRatio)){
-  ##interpolated water content before irrigation
-  TDRmin=TDRexp$volexp[depth]
-  ##target scale
-  scaleTDR=TDRmax-TDRmin
-  
-  ##resistivity ratios in depth
-  ratios=rRatio[depth,]
-  ratiosMin=ratios[1]
-  ratiosMax=ratios[length(ratios)]
-  ##scaled ratios
-  ratiosScaled=TDRmin+(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
-  ratiosScaledRel=(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
-  ##and append to data.frame
-  scaleRatio=rbind(scaleRatio,ratiosScaled)
-  scaleRatioRel=rbind(scaleRatioRel,ratiosScaledRel)
-}
-matplot(t(scaleRatio),type="l",ylab="",xlab="",axes=F,col=colors.depth,lty=1,ylim=c(34,40))
-axis(side=1,at=seq(1:ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
-axis(side=2,at=seq(34,40,1),las=1)
-mtext(side=1,"Time",line=2.5)
-mtext(side=2,"Water content [%]",line=2.5,las=0)
-legend("bottomright",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2,cex=0.7)
-```
-
-
-###Plot water content with depth over time  
-```{r echo=F,message=F,warning=F}
-##build matrix
-RatioData=as.matrix(scaleRatio)
-RatioDataRel=as.matrix(scaleRatioRel)
-
-##rasterize matrix
-RatioDatarast=raster(RatioData)
-RatioDataRelrast=raster(RatioDataRel)
-
-##interpolate??
-
-##plot
-par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
-plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
-axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
-mtext(side=1,"Time",line=2.5)
-mtext(side=2,"Depth [m]",line=2.5,las=0)
-mtext(side=4,line=4,"Water content [%]",las=0)
-plot(RatioDatarast,col=rev(colors),add=T,zlim=c(32,40))
-
-
-##plot
-plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
-axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
-mtext(side=1,"Time",line=2.5)
-mtext(side=2,"Depth [m]",line=2.5,las=0)
-##cut off negative values
-RatioDataRelrast[RatioDataRelrast<0]=0
-mtext(side=4,line=4,"Change in water content [%]",las=0)
-plot(RatioDataRelrast,col=rev(colors),add=T,zlim=c(0,5.5))
-```
-
-
-
 ###Fit SWCC to data
 ```{r echo=F,message=F,warning=F}
 #################################################################################################
@@ -804,7 +697,6 @@ plot(RatioDataRelrast,col=rev(colors),add=T,zlim=c(0,5.5))
 setwd(SWCCPath)
 
 require(minpack.lm)
-require(RColorBrewer)
 
 ##read data
 file="swcc_Laterns_BfW.txt"
@@ -816,6 +708,12 @@ potential=data[,1]
 ##van genuchten model (van Genuchten 1980)
 vanGenuchten=function(psi,theta_r,theta_s,alpha,n){
   theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
+}
+
+##reverse van genuchten model (van Genuchten 1980)
+revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
+  10^((((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha)
+  #theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
 }
 
 ##gardner model (Gardner 1959)
@@ -834,7 +732,7 @@ subdata[subdata=="NA"]<-NA
 means=as.data.frame(cbind(as.numeric(row.names(subdata)),rowMeans(subdata)),stringsAsFactors=F)
 names(means)=c("potential","mean")
 ##plot all curves
-matplot(subdata,means$potential,xlim=c(0,0.8),type="l",pch=20,lty=1,lwd=1,cex=1,ylim=c(0,log10(max(potential))+1),col=seq(1,ncol(subdata)),xlab="water content [m3/m3]",ylab="PF")
+matplot(subdata,means$potential,xlim=c(0,0.8),type="b",pch=20,lty=1,lwd=1,cex=1,ylim=c(0,log10(max(potential))+1),col=seq(1,ncol(subdata)),xlab="water content [m3/m3]",ylab="PF")
 ##add mean curve
 lines(means$mean,means$potential,xlim=c(0,0.8),type="b",pch=19,lwd=2,lty=3)
 #plot(means$mean,means$potential,xlim=c(0,0.8),ylim=c(0,7),type="b",pch=19,lwd=2,lty=3)
@@ -860,7 +758,7 @@ settings=nls.control(maxiter=1000,
                      warnOnly=F,
                      printEval=T)
 
-fit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
+genuchtenFit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
         data=data.fit,
         start=startvalues,
         algorithm="port",
@@ -870,93 +768,680 @@ fit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
         settings
 )
 psi=seq(0,5,by=0.2)
-wc=vanGenuchten(psi,coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
+wc=vanGenuchten(psi,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])
 lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2)
 
+##convert soil moisture (tdr) to suction via van genuchten (1980)
+TDRdata["suction"]=revVanGenuchten(TDRdata$vol/100.0,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])/-100
+TDRdata["depthm"]=TDRdata$depth/100.0
+TDRdataAfter["suction"]=revVanGenuchten(TDRdataAfter$vol/100.0,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])/-100
+TDRdataAfter["depthm"]=TDRdataAfter$depth/100.0
 
-gardenerFit=nls(vol~Gardner(potential,theta_r,theta_s,alpha),
-        data=data.fit,
-        start=list(theta_r=0.15,theta_s=0.5,alpha=0.15),
-        algorithm="port",
-        lower=c(0.0,0.45,0.05),
-        upper=c(0.4,0.7,1),
-        trace=F,#T,
-        settings
+
+
+##calculate hydraulic diffusivity (van Genuchten 1980)
+diffus=function(Ks,theta,theta_r,theta_s,alpha,n){
+  m=1-1/n
+  diff=((1-m)*Ks)/(alpha*m*(theta_s-theta_r))*
+    theta^(0.5-1/m)*
+    (((1-theta^(1/m))^(-m))+
+       ((1-theta^(1/m))^m)-2)
+  return(diff)
+}
+
+plot(seq(0.01,0.99,0.01),
+     diffus(0.00000025,seq(0.01,0.99,0.01),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4]),
+     #ylim=c(-0.000001,0),
+     xlim=c(0,1),
+     type="l",
+     xlab="saturation",
+     ylab="hyd. diffusivity",
+     log="y"
 )
-psi=seq(0,5,by=0.2)
-wc=Gardner(psi,coef(gardenerFit)[1],coef(gardenerFit)[2],coef(gardenerFit)[3])
-lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2,lty=2)
 
-#wc=Gardner(psi,0.2,0.55,20)
-#lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="red")
-legend("bottomleft",legend=c("Mean curve","van Genuchten Fit","Gardner Fit"),lty=c(3,1,2),lwd=c(2,2,2),pch=c(19,NA,NA),col=c("black","blue","blue"))
+ktheta=function(theta,n){
+  m=1-1/n
+  ks=theta^(0.5)*(1-(1-theta^(1/m))^(m))^2
+}
+
+plot(seq(0.01,0.99,0.01),
+     ktheta(seq(0.01,0.99,0.01),coef(genuchtenFit)[4]),
+     #ylim=c(-0.000001,0),
+     type="l",
+     xlab="saturation",
+     ylab="hyd. conductivity"
+)
+
+
+
+
+
+
+##fit linear model to soil suction with depth (tension-saturation)
+suctionFit=lm(suction~depthm,data=TDRdata)
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6),pty="s")
+depth=seq(0,1.5,0.01)
+plot(NA,NA,ylim=c(1,0),xlim=c(-30,0),xlab="",ylab="")
+mtext(side=1,"Soil suction [m]",line=2.5)
+mtext(side=2,"Depth [m]",line=3,las=0)
+##first plot 95% ci's
+ciSuction=predict(lm(suction~depthm,data=TDRdata),newdata=data.frame(depthm=depth),interval=c("confidence"),level=0.95)
+ciSuction2=predict(lm(suction~depthm,data=TDRdataAfter),newdata=data.frame(depthm=depth),interval=c("confidence"),level=0.95)
+polygon(c(ciSuction[,2],rev(ciSuction[,3])),c(depth,rev(depth)),border=F,col="gray80")
+polygon(c(ciSuction2[,2],rev(ciSuction2[,3])),c(depth,rev(depth)),border=F,col="gray80")
+##plot lms
+points(TDRdata$suction,TDRdata$depthm,pch=3,cex=0.7,col="red")
+points(TDRdataAfter$suction,TDRdataAfter$depthm,pch=2,cex=0.7,col="blue")
+lines(ciSuction[,1],depth,type="l",col="red",lwd=2)
+lines(ciSuction2[,1],depth,type="l",col="blue",lwd=2)
+
+##fit linear model and extrapolate initial water content
+Suctionexp=data.frame(depth=seq(0,100,10),Suctionexp1=predict(lm(suction~depth,data=TDRdata),newdata=data.frame(depth=seq(0,100,10))),Suctionexp2=predict(lm(suction~depth,data=TDRdataAfter),newdata=data.frame(depth=seq(0,100,10))))
+
+
+
+
+##now calculate water content with depth
+waterDepth=data.frame(watercontent1=vanGenuchten(log10(-ciSuction[,1][1:100]*100),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,
+                      watercontent2=vanGenuchten(log10(-ciSuction2[,1][1:100]*100),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,
+                      depth=depth[1:100]*100)
+
+##fit linear model and extrapolate initial water content
+TDRexp=data.frame(depth=seq(0,100,10),volexp1=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=seq(0,100,10))),volexp2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=seq(0,100,10))))
+
+##plot soil moisture with depth before and after irrigation
+plot(NA,NA,ylim=c(100,0),xlim=c(32,42),xlab="",ylab="")
+mtext(side=1,"Water content [%]",line=2.5)
+mtext(side=2,"Depth [cm]",line=3,las=0)
+##first plot 95% ci's
+ci=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
+ci2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=0:100),interval=c("confidence"),level=0.95)
+#ci=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=0:100),interval=c("prediction"),level=0.95)
+#ci2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=0:100),interval=c("prediction"),level=0.95)
+polygon(c(ci[,2],rev(ci[,3])),c(0:100,100:0),border=F,col="gray80")
+polygon(c(ci2[,2],rev(ci2[,3])),c(0:100,100:0),border=F,col="gray80")
+##plot lms
+points(TDRdata$vol,TDRdata$depth,pch=3,cex=0.7,col="red")
+lines(ci[,1],seq(0,100),type="l",col="red",lwd=2)
+points(TDRdataAfter$vol,TDRdataAfter$depth,pch=2,cex=0.7,col="blue")
+lines(ci2[,1],seq(0,100),type="l",col="blue",lwd=2)
+legend("bottomleft",legend=c("Before irrigation","After irrigation"),pch=c(3,2),lty=c(1,1),col=c("red","blue"))
+
+
+lines(waterDepth$watercontent1,
+     waterDepth$depth,
+     type="l",
+     ylim=c(100,0),
+     xlim=c(32,42))
+lines(waterDepth$watercontent2,
+     waterDepth$depth,
+     type="l",
+     ylim=c(100,0),
+     xlim=c(32,42))
+
+
+
+
+# gardenerFit=nls(vol~Gardner(potential,theta_r,theta_s,alpha),
+#         data=data.fit,
+#         start=list(theta_r=0.15,theta_s=0.5,alpha=0.15),
+#         algorithm="port",
+#         lower=c(0.0,0.45,0.05),
+#         upper=c(0.4,0.7,1),
+#         trace=F,#T,
+#         settings
+# )
+# psi=seq(0,5,by=0.2)
+# wc=Gardner(psi,coef(gardenerFit)[1],coef(gardenerFit)[2],coef(gardenerFit)[3])
+# lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2,lty=2)
+# 
+# #wc=Gardner(psi,0.2,0.55,20)
+# #lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="red")
+# legend("bottomleft",legend=c("Mean curve","van Genuchten Fit","Gardner Fit"),lty=c(3,1,2),lwd=c(2,2,2),pch=c(19,NA,NA),col=c("black","blue","blue"))
 ```
 
 
-Calculate suction via fitted van Genuchten model  
+
+###Convert Resistivity Ratios to Water content  
+Initial state: linear inter-/extrapolation of recorded water content before irrigation (TDRs) with depth  
 ```{r echo=F,message=F,warning=F}
-##reverse van genuchten model (van Genuchten 1980)
-revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
-  10^(((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha
-  #theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
+##depth step to be considered
+depthWater=10
+rRatio=ert.depth[1:depthWater,-1]
+
+##use linear relationship of resistivity ratio and water content (does not work!)
+#coef(linFit)[2]
+##calculate ratio change between time steps
+# tempRatio=data.frame()
+# for (i in 2:nrow(rRatio)){
+#   tempRatio=rbind(tempRatio,rRatio[i,]-rRatio[i-1,])
+# }
+# colnames=c()
+# for (i in 1:ncol(rRatio)){
+#   colnames=c(colnames,sprintf("X%i",i))
+# }
+# names(tempRatio)=colnames
+# matplot(tempRatio,type="l")
+
+
+
+##Final state: interpolated water content after irrigation  
+##scale restistivity ratios to water content
+scaleRatio=data.frame()
+scaleRatioRel=data.frame()
+##same max. value in all depths, derived from mean of all measurements after no change with irrigation (15.00h)
+#TDRmax=mean(colMeans(TDRafter))
+depth=1
+for (depth in 1:nrow(rRatio)){
+  ##interpolated water content before irrigation
+  TDRmin=TDRexp$volexp1[depth]
+  ##interpolated water content after irrigation
+  TDRmax=TDRexp$volexp2[depth]
+  ##target scale
+  scaleTDR=TDRmax-TDRmin
+  
+  ##resistivity ratios in depth
+  ratios=rRatio[depth,]
+  ratiosMin=ratios[1]
+  ratiosMax=ratios[length(ratios)]
+  ##scaled ratios
+  ratiosScaled=TDRmin+(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ratiosScaledRel=(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ##and append to data.frame
+  scaleRatio=rbind(scaleRatio,ratiosScaled)
+  scaleRatioRel=rbind(scaleRatioRel,ratiosScaledRel)
 }
+matplot(t(scaleRatio),type="l",ylab="",xlab="",axes=F,col=colors.depth,lty=1,ylim=c(34,40))
+axis(side=1,at=seq(1:ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+axis(side=2,at=seq(34,40,1),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Water content [%]",line=2.5,las=0)
+legend("bottomright",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2,cex=0.7)
 
-##plot(seq(0,1,0.01),revVanGenuchten(seq(0,1,0.01),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4]),log="y")
-suction.sub=revVanGenuchten(data.frame(RatioData/100.0),coef(fit)[1],coef(fit)[2],coef(fit)[3],coef(fit)[4])
+matplot(t(scaleRatio),type="l",ylab="",xlab="",axes=F,col=colors.depth,lty=1,ylim=c(34,40))
+axis(side=1,at=seq(1:ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+axis(side=2,at=seq(34,40,1),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Water content [%]",line=2.5,las=0)
+legend("bottomright",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2,cex=0.7)
 
-##convert to mm Wassersaeule
-suction.sub=suction.sub/-100.0
+
+###Plot water content with depth over time  
+##build matrix
+RatioData=as.matrix(scaleRatio)
+RatioDataRel=as.matrix(scaleRatioRel)
 
 ##rasterize matrix
-Suctionrast=raster(suction.sub)
+RatioDatarast=raster(RatioData)
+RatioDataRelrast=raster(RatioDataRel)
 
+par(mfrow=c(1,1))
+##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
 axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
-mtext(side=4,line=5,"Pressure head [m]",las=0)
-plot(Suctionrast,col=rev(colors),add=T,zlim=c(-0.5,-0.2))
+mtext(side=4,line=4,"Water content [%]",las=0)
+plot(RatioDatarast,col=rev(colors),add=T,zlim=c(34,40))
+
+
+##plot relative change
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+##cut off negative values
+RatioDataRelrast[RatioDataRelrast<0]=0
+mtext(side=4,line=4,"Change in water content [%]",las=0)
+plot(RatioDataRelrast,col=rev(colors),add=T,zlim=c(0,5))
+```
+
+
+
+###Scale restistivity ratios to suction directly (skipping water content) 
+Initial state: linear inter-/extrapolation of converted soil suction before irrigation with depth  
+```{r echo=F,message=F,warning=F}
+##depth step to be considered
+depthWater=10
+rRatio=ert.depth[1:depthWater,-1]
+
+##scale restistivity ratios to suction directly (skipping water content)
+scaleRatio=data.frame()
+scaleRatioRel=data.frame()
+##same max. value in all depths, derived from mean of all measurements after no change with irrigation (15.00h)
+#TDRmax=mean(colMeans(TDRafter))
+depth=1
+for (depth in 1:nrow(rRatio)){
+  ##interpolated water content before irrigation
+  Suctionmin=Suctionexp$Suctionexp1[depth]
+  ##interpolated water content after irrigation
+  Suctionmax=Suctionexp$Suctionexp2[depth]
+  ##target scale
+  scaleTDR=Suctionmax-Suctionmin
+  
+  ##resistivity ratios in depth
+  ratios=rRatio[depth,]
+  ratiosMin=ratios[1]
+  ratiosMax=ratios[length(ratios)]
+  ##scaled ratios
+  ratiosScaled=Suctionmin+(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ratiosScaledRel=(ratios-rep(ratiosMin,length(ratios)))/rep(ratiosMax-ratiosMin,length(ratios))*scaleTDR
+  ##and append to data.frame
+  scaleRatio=rbind(scaleRatio,ratiosScaled)
+  scaleRatioRel=rbind(scaleRatioRel,ratiosScaledRel)
+}
+matplot(t(scaleRatio),type="l",ylab="",xlab="",axes=F,col=colors.depth,lty=1,ylim=c(-30,-5))
+axis(side=1,at=seq(1:ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+axis(side=2,at=seq(-30,-5,5),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Pressure head [m]",line=2.5,las=0)
+legend("bottomright",title="Depth [cm]",legend=depth.steps,col=colors.depth,lty=1,lwd=2,cex=0.7)
+
+
+###Plot water content with depth over time  
+##build matrix
+RatioData=as.matrix(scaleRatio)
+RatioDataRel=as.matrix(scaleRatioRel)
+
+##rasterize matrix
+RatioDatarast=raster(RatioData)
+RatioDataRelrast=raster(RatioDataRel)
+
+par(mfrow=c(1,1))
+##plot absolute change
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=4,"Water content [%]",las=0)
+plot(RatioDatarast,col=rev(colors),add=T,zlim=c(-30,-5))
+
+
+##plot relative change
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+##cut off negative values
+RatioDataRelrast[RatioDataRelrast<0]=0
+mtext(side=4,line=4,"Change in water content [%]",las=0)
+plot(RatioDataRelrast,col=rev(colors),add=T,zlim=c(0,15))
+```
+
+
+
+
+
+
+Calculate suction via fitted van Genuchten model  
+```{r echo=F,message=F,warning=F}
+##reverse van genuchten model (van Genuchten 1980)
+# revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
+#   10^((((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha)
+#   #theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
+# }
+# 
+# ##plot(seq(0,1,0.01),revVanGenuchten(seq(0,1,0.01),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4]),log="y")
+# suction.sub=revVanGenuchten(data.frame(RatioData/100.0),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])
+# min(data.frame(RatioData/100.0))
+# max(data.frame(RatioData/100.0))
+# 
+# 
+# ##convert to m Wassersaeule
+# suction.sub=suction.sub/-100.0
+# min(suction.sub)
+# max(suction.sub)
+# 
+# ##rasterize matrix
+# Suctionrast=raster(suction.sub)
+# 
+# par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+# plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+# axis(side=1,at=((1/ncol(scaleRatio)/2)+seq(0,(ncol(scaleRatio)-1),1)/ncol(scaleRatio)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+# axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+# mtext(side=1,"Time",line=2.5)
+# mtext(side=2,"Depth [m]",line=2.5,las=0)
+# mtext(side=4,line=5,"Pressure head [m]",las=0)
+# #Suctionrast@data@values[Suctionrast@data@values>-10.0]=-10.0
+# plot(Suctionrast,col=rev(colors),add=T,zlim=c(-30,-10))
 ```
 
 
 ###Compare to model results
-Unsaturated initial conditions  
+Tension-saturated initial conditions  
 ```{r echo=F,message=F,warning=F}
-setwd(TRIGRSPath)
+##validation data (observations)
+Suctionrast=RatioDatarast
 
-require(raster)
-require(RColorBrewer)
+##initial conditions
+##initial depth of water table
+initFit=lm(suction~depthm,data=TDRdata)
+coef(initFit)[1]/coef(initFit)[2]
 
-##read data
-data=read.table("pwp_time.txt",header=T,sep=",")
-##remove time
-data.c=data[,-1]
+##beta for initial conditions
+coef(initFit)[2]
+
+##regolith depth
+zmax=2
+##starting depth
+zmin=0.1
+##depth of water table
+d=-coef(initFit)[1]/coef(initFit)[2]
+
+##slope angle (to radian)
+slope=31.3*pi/180
+
+##time
+time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+#time=c(0,0,0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+
+##precipitation (27.5 mm/h)
+iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
+
+##number of time steps
+tsteps=length(time)
+nper=length(iz)
+
+##coordiante transformation for slope-parallel ground water flow
+#beta=cos(slope)^2
+beta=coef(initFit)[2]
+
+##beta-line (saturated)
+psi0=(seq(zmin,zmax,zmin)-d)*beta
+par(xaxs="i",yaxs="i")
+#plot(psi0,seq(zmin,zmax,zmin),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
+##beta-line (initial)
+psisat=(seq(zmin,zmax,zmin))*beta
+#lines(psisat,seq(zmin,zmax,zmin))
+#abline(v=0)
+
+
+
+##par(pty="s")
+##plot(expand.grid(c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5)),c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5))),log="xy")
+
+corelList=data.frame()
+for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
+  print(ks)
+  for (ss in unique(c(10^(seq(0,1,0.1)) %o% 10^(-5:-2)))){
+    ##hydraulic diffusivity
+    d0=ks/ss
+
+    ##correction of the original Iverson (2000) formula dm=4.0*d0*beta
+    ##see Baum et al. 2010
+    dm=4.0*d0/cos(slope)^2
+    
+    ##all pwp time steps
+    pwpTime=data.frame()
+    
+#     #own scripts ()
+#     cols=rev(topo.colors(tsteps))
+#     for (tstep in 1:(nper)){
+#       tstar1=time[tstep]/(seq(zmin,zmax,zmin)^2/dm)
+#       rstar1=(tstar1/pi)^0.5*exp(-1/tstar1)-erfc(1/(tstar1^0.5))
+#       psistep1=beta*(1-d/seq(zmin,zmax,zmin))+iz[tstep]/ks*rstar1
+#       psi1=seq(zmin,zmax,zmin)*psistep1
+#       
+#       ##limit is saturated beta-line
+#       psi1[psi1>psisat]=psisat[psi1>psisat]
+#       #print(psi1)
+#       
+#       pwpTime=rbind(pwpTime,psi1)
+#     }
+    
+    
+    
+    
+    
+    cols=rev(topo.colors(tsteps))
+    tdata=data.frame(NA)
+    ptrans=0.0
+    for (tstep1 in 1:(nper+1)){
+      t0=time[tstep1]
+      zdata=data.frame()
+      for (z in seq(zmin,zmax,zmin)){
+        pzero=beta*(z-d)
+        zstar=z**2/(4.*d0/cos(slope)^2)
+        tstar=t0/zstar
+        psi=0.0
+        for (tstep2 in 1:nper){
+          captstar1=time[tstep2]/zstar 
+          tdif1=tstar-captstar1
+          if(tdif1 > 0.0){
+            rfa=((tdif1/pi)^0.5)*exp(-1./tdif1)-erfc(1./((tdif1)^0.5))
+          }else{
+            rfa=0.0
+          }
+          captstar2=time[tstep2+1]/zstar
+          tdif2=tstar-captstar2
+          if (tdif2 > 0.0){
+            rfb=((tdif2/pi)^0.5)*exp(-1./tdif2)-erfc(1./((tdif2)^0.5))
+          }else{
+            rfb=0.0
+          }
+          #psi=psi+iz[tstep2]/ks*(rfa-rfb)
+          psi=psi+iz[tstep2]/ks*(rfa-rfb)*z
+        }
+        pmax=z*beta
+        if (abs(psi)>0.0){
+          ptrans=psi
+        }
+        p=pzero+ptrans
+        if (p>pmax){
+          p=pmax
+        }
+        zdata=rbind(zdata,p)
+      }
+      #lines(zdata[,1],seq(zmin,zmax,zmin),col=cols[tstep1])
+      tdata=cbind(tdata,zdata)
+      
+    #   if(rikzero(i)<0.0) then
+    #   zinc=(zmax(i)-zmin)/zns
+    #   z=zmin
+    #   newdep=0.0
+    #   do j=1,nzs+1
+    #   if(p(j)<0.0) newdep=z
+    #   z=z+zinc
+    #   end do
+    #   
+    #   ! adjust presures 
+    #   z=zmin
+    #   do j=1,nzs+1
+    #   if(p(j)>0.0 .and. z<newdep) p(j)=0.d0
+    #   if(p(j)>=0.0 .and. z>=newdep) p(j)=beta*(z-newdep)
+    #   z=z+zinc	    
+    #   end do
+    #   end if
+    }
+    pwpTime=t(tdata[,c(-1,-length(time))])
+    
+    
+    
+    data.c=pwpTime
+    ##create color ramp
+    cols=colorRampPalette(brewer.pal(3,"RdBu"))(100)
+    ##convert to matrix
+    data.m=as.matrix(t(data.c)[1:10,])
+    data.r=raster(data.m)
+    
+    ##stack rasters and compute correlation coefficient
+    raststack=stack(data.r,Suctionrast)
+    corel=layerStats(raststack,'pearson')
+    corel$'pearson correlation coefficient'
+    corel
+    corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2]))
+  }
+}
+
+wireframe(cor~log10(ss)*log10(ks),
+          corelList,drape=T,aspect=c(1,1),
+          colorkey=T,col.regions=colorRampPalette(brewer.pal(5,"RdYlGn"))(100),
+          screen=list(z=20,x=-50),
+          zlab=list("Pearson's correlation coefficient", rot=95),
+          xlab=list("LOG10 Specific storage [1/m]",rot=15),
+          ylab=list("LOG10 Hydraulic conductivity [m/s]",rot=293),
+          scales = list(arrows = FALSE))
+
+
+corelList[corelList$cor==max(corelList$cor),]
+
+
+##plot best raster
+ks=corelList[corelList$cor==max(corelList$cor),]$ks
+ss=corelList[corelList$cor==max(corelList$cor),]$ss
+
+##initial conditions
+##initial depth of water table
+initFit=lm(suction~depthm,data=TDRdata)
+
+##regolith depth
+zmax=2
+##starting depth
+zmin=0.1
+##depth of water table
+d=-coef(initFit)[1]/coef(initFit)[2]
+
+##slope angle (to radian)
+slope=31.3*pi/180
+
+##time
+time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+#time=c(0,0,0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+
+##precipitation (27.5 mm/h)
+iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
+
+##number of time steps
+tsteps=length(time)
+nper=length(iz)
+
+##coordiante transformation for slope-parallel ground water flow
+#beta=cos(slope)^2
+beta=coef(initFit)[2]
+
+##beta-line (saturated)
+psi0=(seq(zmin,zmax,zmin)-d)*beta
+par(xaxs="i",yaxs="i")
+#plot(psi0,seq(zmin,zmax,zmin),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
+##beta-line (initial)
+psisat=(seq(zmin,zmax,zmin))*beta
+#lines(psisat,seq(zmin,zmax,zmin))
+#abline(v=0)
+
+##hydraulic diffusivity
+d0=ks/ss
+
+##correction of the original Iverson (2000) formula dm=4.0*d0*beta
+##see Baum et al. 2010
+dm=4.0*d0/cos(slope)^2
+
+##all pwp time steps
+pwpTime=data.frame()
+
+# #own scripts ()
+# cols=rev(topo.colors(tsteps))
+# for (tstep in 1:(nper)){
+#   tstar1=time[tstep]/(seq(zmin,zmax,zmin)^2/dm)
+#   rstar1=(tstar1/pi)^0.5*exp(-1/tstar1)-erfc(1/(tstar1^0.5))
+#   psistep1=beta*(1-d/seq(zmin,zmax,zmin))+iz[tstep]/ks*rstar1
+#   psi1=seq(zmin,zmax,zmin)*psistep1
+#   
+#   ##limit is saturated beta-line
+#   psi1[psi1>psisat]=psisat[psi1>psisat]
+#   #print(psi1)
+#   
+#   pwpTime=rbind(pwpTime,psi1)
+# }
+
+##original/modified trigrs
+cols=rev(topo.colors(tsteps))
+tdata=data.frame(NA)
+ptrans=0.0
+for (tstep1 in 1:(nper+1)){
+  t0=time[tstep1]
+  zdata=data.frame()
+  for (z in seq(zmin,zmax,zmin)){
+    pzero=beta*(z-d)
+    zstar=z**2/(4.*d0/cos(slope)^2)
+    tstar=t0/zstar
+    psi=0.0
+    for (tstep2 in 1:nper){
+      captstar1=time[tstep2]/zstar 
+      tdif1=tstar-captstar1
+      if(tdif1 > 0.0){
+        rfa=((tdif1/pi)^0.5)*exp(-1./tdif1)-erfc(1./((tdif1)^0.5))
+      }else{
+        rfa=0.0
+      }
+      captstar2=time[tstep2+1]/zstar
+      tdif2=tstar-captstar2
+      if (tdif2 > 0.0){
+        rfb=((tdif2/pi)^0.5)*exp(-1./tdif2)-erfc(1./((tdif2)^0.5))
+      }else{
+        rfb=0.0
+      }
+      #psi=psi+iz[tstep2]/ks*(rfa-rfb)
+      psi=psi+iz[tstep2]/ks*(rfa-rfb)*z
+    }
+    pmax=z*beta
+    if (abs(psi)>0.0){
+      ptrans=psi
+    }
+    p=pzero+ptrans
+    if (p>pmax){
+      p=pmax
+    }
+    zdata=rbind(zdata,p)
+  }
+  #lines(zdata[,1],seq(zmin,zmax,zmin),col=cols[tstep1])
+  tdata=cbind(tdata,zdata)
+}
+pwpTime=t(tdata[,c(-1,-length(time))])
+
+data.c=pwpTime
 ##create color ramp
 cols=colorRampPalette(brewer.pal(3,"RdBu"))(100)
 ##convert to matrix
 data.m=as.matrix(t(data.c)[1:10,])
 data.r=raster(data.m)
 
+##stack rasters and compute correlation coefficient
+raststack=stack(data.r,Suctionrast)
+corel=layerStats(raststack,'pearson')
+corel$'pearson correlation coefficient'[1,2]
+
+
 ##scale in regard to measurements
-zMin=-0.5
-zMax=-0.2
+zMin=-30
+zMax=-5
 data.r[data.r>zMax]=zMax
 data.r[data.r<zMin]=zMin
 
+image(data.r)
+
 ##plot
+colors=rev(colorRampPalette(brewer.pal(9,"RdBu"))(100))
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(0,1,length.out=14),labels=seq(0,65,by=5))
+axis(side=1,at=seq((1/(length(time)-1)/2),1-(1/(length(time)-1)/2),length.out=(length(time)-1)),labels=time[2:length(time)]/60)
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time [min]",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 mtext(side=4,line=5,"Pressure head [m]",las=0)
-plot(data.r,col=rev(colors),zlim=c(zMin,zMax),add=T)
+#plot(data.r,col=rev(colors),zlim=c(-0.5,-0.2),add=T)
+plot(data.r,col=rev(colors),zlim=c(-30,-5),add=T)
+
+
+
+#require(rgl)
+#plot3d(log10(corelList$ks),log10(corelList$ss),corelList$cor)
 ```
-
-
 
 ```{r echo=F,message=F,warning=F}
 ##re-set root path
