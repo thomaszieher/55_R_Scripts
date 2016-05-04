@@ -1439,6 +1439,17 @@ plot(data.r,col=rev(colors),zlim=c(-30,-5),add=T)
 
 
 
+par(mfrow=c(1,1))
+##plot absolute change
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=4,"Water content [%]",las=0)
+plot(RatioDatarast-data.r,col=rev(colors),add=T,zlim=c(-6,0))
+
 #require(rgl)
 #plot3d(log10(corelList$ks),log10(corelList$ss),corelList$cor)
 ```
