@@ -18,7 +18,7 @@ require(pracma)
 
 ##set parent directory
 #rootPath=dirname(getwd())
-rootPath="F:\\55_check_ert"
+rootPath="C:\\PHD\\Code_Projects\\55_check_ert"
 grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
 TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
 SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
@@ -1131,6 +1131,8 @@ coef(initFit)[2]
 zmax=2
 ##starting depth
 zmin=0.1
+##depth increment
+zstep=0.1
 ##depth of water table
 d=-coef(initFit)[1]/coef(initFit)[2]
 
@@ -1153,12 +1155,12 @@ nper=length(iz)
 beta=coef(initFit)[2]
 
 ##beta-line (saturated)
-psi0=(seq(zmin,zmax,zmin)-d)*beta
+psi0=(seq(zmin,zmax,zstep)-d)*beta
 par(xaxs="i",yaxs="i")
-#plot(psi0,seq(zmin,zmax,zmin),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
+#plot(psi0,seq(zmin,zmax,zstep),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
 ##beta-line (initial)
-psisat=(seq(zmin,zmax,zmin))*beta
-#lines(psisat,seq(zmin,zmax,zmin))
+psisat=(seq(zmin,zmax,zstep))*beta
+#lines(psisat,seq(zmin,zmax,zstep))
 #abline(v=0)
 
 
@@ -1183,10 +1185,10 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
 #     #own scripts ()
 #     cols=rev(topo.colors(tsteps))
 #     for (tstep in 1:(nper)){
-#       tstar1=time[tstep]/(seq(zmin,zmax,zmin)^2/dm)
+#       tstar1=time[tstep]/(seq(zmin,zmax,zstep)^2/dm)
 #       rstar1=(tstar1/pi)^0.5*exp(-1/tstar1)-erfc(1/(tstar1^0.5))
-#       psistep1=beta*(1-d/seq(zmin,zmax,zmin))+iz[tstep]/ks*rstar1
-#       psi1=seq(zmin,zmax,zmin)*psistep1
+#       psistep1=beta*(1-d/seq(zmin,zmax,zstep))+iz[tstep]/ks*rstar1
+#       psi1=seq(zmin,zmax,zstep)*psistep1
 #       
 #       ##limit is saturated beta-line
 #       psi1[psi1>psisat]=psisat[psi1>psisat]
@@ -1205,7 +1207,7 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
     for (tstep1 in 1:(nper+1)){
       t0=time[tstep1]
       zdata=data.frame()
-      for (z in seq(zmin,zmax,zmin)){
+      for (z in seq(zmin,zmax,zstep)){
         pzero=beta*(z-d)
         zstar=z**2/(4.*d0/cos(slope)^2)
         tstar=t0/zstar
@@ -1238,7 +1240,7 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
         }
         zdata=rbind(zdata,p)
       }
-      #lines(zdata[,1],seq(zmin,zmax,zmin),col=cols[tstep1])
+      #lines(zdata[,1],seq(zmin,zmax,zstep),col=cols[tstep1])
       tdata=cbind(tdata,zdata)
       
     #   if(rikzero(i)<0.0) then
@@ -1300,10 +1302,6 @@ ss=corelList[corelList$cor==max(corelList$cor),]$ss
 ##initial depth of water table
 initFit=lm(suction~depthm,data=TDRdata)
 
-##regolith depth
-zmax=2
-##starting depth
-zmin=0.1
 ##depth of water table
 d=-coef(initFit)[1]/coef(initFit)[2]
 
@@ -1326,12 +1324,12 @@ nper=length(iz)
 beta=coef(initFit)[2]
 
 ##beta-line (saturated)
-psi0=(seq(zmin,zmax,zmin)-d)*beta
+psi0=(seq(zmin,zmax,zstep)-d)*beta
 par(xaxs="i",yaxs="i")
-#plot(psi0,seq(zmin,zmax,zmin),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
+#plot(psi0,seq(zmin,zmax,zstep),type="l",xlim=c(-40,0),ylim=c(zmax,0),ylab="Depth [m]",xlab="Pressure head [m]")
 ##beta-line (initial)
-psisat=(seq(zmin,zmax,zmin))*beta
-#lines(psisat,seq(zmin,zmax,zmin))
+psisat=(seq(zmin,zmax,zstep))*beta
+#lines(psisat,seq(zmin,zmax,zstep))
 #abline(v=0)
 
 ##hydraulic diffusivity
@@ -1347,10 +1345,10 @@ pwpTime=data.frame()
 # #own scripts ()
 # cols=rev(topo.colors(tsteps))
 # for (tstep in 1:(nper)){
-#   tstar1=time[tstep]/(seq(zmin,zmax,zmin)^2/dm)
+#   tstar1=time[tstep]/(seq(zmin,zmax,zstep)^2/dm)
 #   rstar1=(tstar1/pi)^0.5*exp(-1/tstar1)-erfc(1/(tstar1^0.5))
-#   psistep1=beta*(1-d/seq(zmin,zmax,zmin))+iz[tstep]/ks*rstar1
-#   psi1=seq(zmin,zmax,zmin)*psistep1
+#   psistep1=beta*(1-d/seq(zmin,zmax,zstep))+iz[tstep]/ks*rstar1
+#   psi1=seq(zmin,zmax,zstep)*psistep1
 #   
 #   ##limit is saturated beta-line
 #   psi1[psi1>psisat]=psisat[psi1>psisat]
@@ -1366,7 +1364,7 @@ ptrans=0.0
 for (tstep1 in 1:(nper+1)){
   t0=time[tstep1]
   zdata=data.frame()
-  for (z in seq(zmin,zmax,zmin)){
+  for (z in seq(zmin,zmax,zstep)){
     pzero=beta*(z-d)
     zstar=z**2/(4.*d0/cos(slope)^2)
     tstar=t0/zstar
@@ -1399,7 +1397,7 @@ for (tstep1 in 1:(nper+1)){
     }
     zdata=rbind(zdata,p)
   }
-  #lines(zdata[,1],seq(zmin,zmax,zmin),col=cols[tstep1])
+  #lines(zdata[,1],seq(zmin,zmax,zstep),col=cols[tstep1])
   tdata=cbind(tdata,zdata)
 }
 pwpTime=t(tdata[,c(-1,-length(time))])
@@ -1438,7 +1436,7 @@ mtext(side=4,line=5,"Pressure head [m]",las=0)
 plot(data.r,col=rev(colors),zlim=c(-30,-5),add=T)
 
 
-
+##plot relative difference between model results and observations
 par(mfrow=c(1,1))
 ##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
@@ -1447,11 +1445,10 @@ axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
-mtext(side=4,line=4,"Water content [%]",las=0)
-plot(RatioDatarast-data.r,col=rev(colors),add=T,zlim=c(-6,0))
+#mtext(side=4,line=4,"Water content [%]",las=0)
+#plot(RatioDatarast-data.r,col=rev(colors)[1:(length(colors)/(10/7))],add=T,zlim=c(-5,2))
+plot((RatioDatarast-data.r)/RatioDatarast,col=rev(colors),add=T,zlim=c(-0.5,0.5))
 
-#require(rgl)
-#plot3d(log10(corelList$ks),log10(corelList$ss),corelList$cor)
 ```
 
 ```{r echo=F,message=F,warning=F}
