@@ -18,8 +18,8 @@ require(pracma)
 
 ##set parent directory
 #rootPath=dirname(getwd())
-#rootPath="C:\\PHD\\Code_Projects\\55_check_ert"
-rootPath="F:\\55_check_ert""
+rootPath="C:\\PHD\\Code_Projects\\55_check_ert"
+#rootPath="F:\\55_check_ert""
 grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
 TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
 SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
@@ -713,7 +713,8 @@ vanGenuchten=function(psi,theta_r,theta_s,alpha,n){
 
 ##reverse van genuchten model (van Genuchten 1980)
 revVanGenuchten=function(vol,theta_r,theta_s,alpha,n){
-  10^((((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha)
+  #10^((((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha)
+  (((theta_s-theta_r)/(vol-theta_r))^(1/(1-(1/n)))-1)^(1/n)/alpha
   #theta_r+((theta_s-theta_r)/(1.0+(alpha*abs(psi))**n)**(1.0-(1.0/n)))
 }
 
@@ -1135,7 +1136,7 @@ coef(initFit)[2]
 ##regolith depth
 zmax=2
 ##starting depth
-zmin=0.1
+zmin=0.05
 ##depth increment
 zstep=0.1
 ##depth of water table
@@ -1321,6 +1322,9 @@ ssmax=log10(9.80665*rho_sat*(alpha_s1+n*4.4e-10))
 ssmin=log10(9.80665*rho_sat*(alpha_s2+n*4.4e-10))
 lines(x=c(2.5,2.5),y=c(ssmax,ssmin),col="red")
 
+sslab=c(0.054462, 0.01996, 0.008927, 0.010877, 0.094618, 0.05267, 0.02118, 0.037569)
+lines(x=rep(2.6,length(sslab)),y=log10(sslab),col="red")
+
 
 ##Ks and K0 from Rosetta (using grain fractions)
 rosetta=read.table("data_rosetta_best.txt",sep="\t",header=T,skip=1)
@@ -1466,7 +1470,7 @@ corel$'pearson correlation coefficient'[1,2]
 
 ##scale in regard to measurements
 zMin=-30
-zMax=-5
+zMax=-3
 data.r[data.r>zMax]=zMax
 data.r[data.r<zMin]=zMin
 
@@ -1485,7 +1489,10 @@ mtext(side=4,line=5,"Pressure head [m]",las=0)
 plot(data.r,col=rev(colors),zlim=c(-30,-5),add=T)
 
 
+
+
 ##plot relative difference between model results and observations
+colors=colorRampPalette(c("red","white","#9cd01b"))(100)
 par(mfrow=c(1,1))
 ##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
@@ -1495,11 +1502,11 @@ axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 #mtext(side=4,line=4,"Water content [%]",las=0)
-#plot(RatioDatarast-data.r,col=rev(colors)[1:(length(colors)/(10/7))],add=T,zlim=c(-5,2))
 diffrast=(RatioDatarast-data.r)/RatioDatarast
-plot(diffrast,col=rev(colors),add=T,zlim=c(-0.5,0.5))
+#plot(diffrast,col=rev(colors)[(10/7):(length(colors))],add=T,zlim=c(-0.15,0.45))
+plot(diffrast,col=colors,add=T,zlim=c(-0.35,0.35))
 
-boxplot(diffrast@data@values,ylim=c(0,0.5))
+boxplot(diffrast@data@values,ylim=c(-0.5,0.5))
 ```
 
 
