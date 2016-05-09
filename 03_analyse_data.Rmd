@@ -552,7 +552,7 @@ dataTDR=dataTDR[format(dataTDR$date,format="%Y-%m-%d")==as.POSIXct(measureday,fo
 
 ##set mindate and maxdate
 mindate=as.POSIXct(strptime("2014-07-24 12:00:00",format="%Y-%m-%d %H:%M:%S"))
-maxdate=as.POSIXct(strptime("2014-07-24 19:00:00",format="%Y-%m-%d %H:%M:%S"))
+maxdate=as.POSIXct(strptime("2014-07-24 19:30:00",format="%Y-%m-%d %H:%M:%S"))
 
 ##omit zeros
 dataTDR$vol[dataTDR$vol==0]=NA
@@ -600,7 +600,7 @@ legend("bottomright",title="Depth [cm]",legend=probes$depth,lwd=2,lty=1,col=prob
 ##get mean of TDR measurements 1h before irrigation
 TDRbefore=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(12*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(14*60*60)))[seq(1,ncol(dataProbes),by=3)]
 ##get mean of TDR measurements 1h after irrigation
-TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(15*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(19*60*60)))[seq(1,ncol(dataProbes),by=3)]
+TDRafter=subset(dataProbes,(dataProbes[,2]>=as.POSIXct(measureday)+(15*60*60))&(dataProbes[,2]<=as.POSIXct(measureday)+(20*60*60)))[seq(1,ncol(dataProbes),by=3)]
 #boxplot(TDRafter)
 #mean(colMeans(TDRafter))
 
