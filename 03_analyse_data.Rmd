@@ -18,7 +18,8 @@ require(pracma)
 
 ##set parent directory
 #rootPath=dirname(getwd())
-rootPath="C:\\PHD\\Code_Projects\\55_check_ert"
+#rootPath="C:\\PHD\\Code_Projects\\55_check_ert"
+rootPath="F:\\55_check_ert""
 grassPath=paste(rootPath,"01_DATA","grass",sep="\\")
 TDRPath=paste(rootPath,"01_DATA","53_tdr",sep="\\")
 SWCCPath=paste(rootPath,"01_DATA","08_vanGenuchten\\curve_fitting",sep="\\")
@@ -552,7 +553,7 @@ dataTDR=dataTDR[format(dataTDR$date,format="%Y-%m-%d")==as.POSIXct(measureday,fo
 
 ##set mindate and maxdate
 mindate=as.POSIXct(strptime("2014-07-24 12:00:00",format="%Y-%m-%d %H:%M:%S"))
-maxdate=as.POSIXct(strptime("2014-07-24 19:00:00",format="%Y-%m-%d %H:%M:%S"))
+maxdate=as.POSIXct(strptime("2014-07-24 20:00:00",format="%Y-%m-%d %H:%M:%S"))
 
 ##omit zeros
 dataTDR$vol[dataTDR$vol==0]=NA
@@ -1295,14 +1296,50 @@ wireframe(cor~log10(ss)*log10(ks),
           scales = list(arrows = FALSE))
 
 
-corelList[corelList$cor==max(corelList$cor),]
+best=corelList[corelList$cor==max(corelList$cor),]
 
 ##parameter boxplot for correlation >=0.95
 boxplot(log10(corelList[corelList$cor>=0.95,]$ks),
         log10(corelList[corelList$cor>=0.95,]$ss),
         log10(corelList[corelList$cor>=0.95,]$d0),
         names=c("Kz","Ss","D0"),
-        ylim=c(-8,-2))
+        ylim=c(-8,-1))
+
+
+##ss for clay after lu and godt 2013, p.118W
+n=0.5108
+rho_solid=2.68
+
+rho_sat=(rho_solid*(1-n)+n)*1000
+alpha_s=0.00000536
+9.80665*rho_sat*(alpha_s+n*4.4e-10)
+
+##Ss for clay after Domenico & Mifflin 1965, p.566
+alpha_s1=2.08854E-06
+alpha_s2=1.30534E-07
+ssmax=log10(9.80665*rho_sat*(alpha_s1+n*4.4e-10))
+ssmin=log10(9.80665*rho_sat*(alpha_s2+n*4.4e-10))
+lines(x=c(2.5,2.5),y=c(ssmax,ssmin),col="red")
+
+
+##Ks and K0 from Rosetta (using grain fractions)
+rosetta=read.table("data_rosetta_best.txt",sep="\t",header=T,skip=1)
+rosetta["Ks_ms"]=10^rosetta$Ks/100/24/60/60
+rosetta["K0_ms"]=10^rosetta$Ko/100/24/60/60
+
+lines(x=rep(1.5,nrow(rosetta)),y=log10(rosetta$Ks_ms),col="blue")
+lines(x=rep(1.6,nrow(rosetta)),y=log10(rosetta$K0_ms),col="green")
+ksmax=max(rosetta$Ks_ms)
+ksmin=min(rosetta$Ks_ms)
+
+d0min=ksmin/(10^ssmax)
+d0max=ksmax/(10^ssmin)
+lines(x=c(3.5,3.5),y=c(log10(d0min),log10(d0max)),col="green")
+
+##plot best
+lines(x=c(0.8,1.2),y=c(log10(best$ks),log10(best$ks)),col="red")
+lines(x=c(1.8,2.2),y=c(log10(best$ss),log10(best$ss)),col="red")
+lines(x=c(2.8,3.2),y=c(log10(best$d0),log10(best$d0)),col="red")
 
 
 
