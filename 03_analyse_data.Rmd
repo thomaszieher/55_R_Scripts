@@ -629,7 +629,7 @@ depths=data.frame(depth=depthList,cols=depthcols,stringsAsFactors=F)
 par(xaxs="i",yaxs="i",pty="s")
 #plot(NA,NA,,xlim=c(30,45),ylim=c(0,-40),ylab="Resistivity difference [Ohm m]",xlab="Soil moisture [Vol%]")
 depth=20
-#for (depth in depths$depth){
+for (depth in depths$depth){
   ##data of desired depth
   depthData=as.data.frame(t(ert.depth[,-1]))[round(depth/10)]
   names(depthData)=c("resDiff")
@@ -682,7 +682,7 @@ depth=20
 #   x=seq(30,50,1)
 #   y=coef(expFit)[1]*exp(x/100)+coef(expFit)[2]
 #   lines(x,-y)
-#}
+}
 #legend("bottomright",legend=depths$depth,title="Depth [cm]",col=depths$cols,pch=c(1,1,1),lty=c(1,1,1))
 legend("bottomright",legend=depth,title="Depth [cm]",col=depths$cols,pch=c(1,1,1),lty=c(1,1,1))
 print(sprintf("R-squared: %0.3f",summary(linFit)$r.squared))
@@ -758,7 +758,7 @@ settings=nls.control(maxiter=1000,
                      warnOnly=F,
                      printEval=T)
 
-genuchtenFit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
+genuchtenFit=nls(vol~vanGenuchten(10^potential,theta_r,theta_s,alpha,n),
         data=data.fit,
         start=startvalues,
         algorithm="port",
@@ -767,8 +767,8 @@ genuchtenFit=nls(vol~vanGenuchten(potential,theta_r,theta_s,alpha,n),
         trace=F,#T,
         settings
 )
-psi=seq(0,5,by=0.2)
-wc=vanGenuchten(psi,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])
+psi=seq(0,5,by=0.1)
+wc=vanGenuchten(10^psi,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])
 lines(wc,psi,type="l",xlim=c(0,0.8),ylim=c(0,5),col="blue",lwd=2)
 
 ##convert soil moisture (tdr) to suction via van genuchten (1980)
@@ -779,42 +779,46 @@ TDRdataAfter["depthm"]=TDRdataAfter$depth/100.0
 
 
 
-##calculate hydraulic diffusivity (van Genuchten 1980)
-diffus=function(Ks,theta,theta_r,theta_s,alpha,n){
+
+
+
+
+ktheta=function(theta,n){
   m=1-1/n
-  diff=((1-m)*Ks)/(alpha*m*(theta_s-theta_r))*
-    theta^(0.5-1/m)*
-    (((1-theta^(1/m))^(-m))+
-       ((1-theta^(1/m))^m)-2)
-  return(diff)
+  ks=theta^(0.5)*(1-(1-(theta^(1/m)))^(m))^2
+  return(ks)
 }
 
-plot(seq(0.01,0.99,0.01),
-     diffus(0.00000025,seq(0.01,0.99,0.01),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4]),
-     #ylim=c(-0.000001,0),
-     xlim=c(0,1),
+theta=seq(0,0.55,0.01)
+plot(theta,
+     ktheta(theta,coef(genuchtenFit)[4]),
+     #ylim=c(1,10000),
+     type="l",
+     xlab="saturation",
+     ylab="hyd. conductivity",
+     log="y"
+)
+
+
+diffus=function(ks,theta,theta_r,theta_s,alpha,n){
+  m=1-1/n
+  d0=(((1-m)*ks)/(alpha*m*(theta_s-theta_r)))*
+    (theta^(0.5-(1/m)))*
+    (((1-theta^(1/m))^(-1*m))+((1-theta^(1/m))^m)-2)
+  return(d0)
+}
+
+ks=0.00025
+diffus(ks,theta,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])
+
+plot(theta,
+     diffus(ks,theta,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4]),
+     #ylim=c(1,10000),
      type="l",
      xlab="saturation",
      ylab="hyd. diffusivity",
      log="y"
 )
-
-ktheta=function(theta,n){
-  m=1-1/n
-  ks=theta^(0.5)*(1-(1-theta^(1/m))^(m))^2
-}
-
-plot(seq(0.01,0.99,0.01),
-     ktheta(seq(0.01,0.99,0.01),coef(genuchtenFit)[4]),
-     #ylim=c(-0.000001,0),
-     type="l",
-     xlab="saturation",
-     ylab="hyd. conductivity"
-)
-
-
-
-
 
 
 ##fit linear model to soil suction with depth (tension-saturation)
@@ -1293,6 +1297,14 @@ wireframe(cor~log10(ss)*log10(ks),
 
 corelList[corelList$cor==max(corelList$cor),]
 
+##parameter boxplot for correlation >=0.95
+boxplot(log10(corelList[corelList$cor>=0.95,]$ks),
+        log10(corelList[corelList$cor>=0.95,]$ss),
+        log10(corelList[corelList$cor>=0.95,]$d0),
+        names=c("Kz","Ss","D0"),
+        ylim=c(-8,-2))
+
+
 
 ##plot best raster
 ks=corelList[corelList$cor==max(corelList$cor),]$ks
@@ -1447,9 +1459,23 @@ mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 #mtext(side=4,line=4,"Water content [%]",las=0)
 #plot(RatioDatarast-data.r,col=rev(colors)[1:(length(colors)/(10/7))],add=T,zlim=c(-5,2))
-plot((RatioDatarast-data.r)/RatioDatarast,col=rev(colors),add=T,zlim=c(-0.5,0.5))
+diffrast=(RatioDatarast-data.r)/RatioDatarast
+plot(diffrast,col=rev(colors),add=T,zlim=c(-0.5,0.5))
 
+boxplot(diffrast@data@values,ylim=c(0,0.5))
 ```
+
+
+###Difference of last measurement to measurement next day
+```{r echo=F,message=F,warning=F}
+nextday=as.Raster(readRAST6(rlist[1]))
+lastmeasurement=as.Raster(readRAST6(rlist[length(rlist)]))
+diffday=nextday-lastmeasurement
+plot(log10(diffday))
+
+plot(diffday/material.before)
+```
+
 
 ```{r echo=F,message=F,warning=F}
 ##re-set root path
