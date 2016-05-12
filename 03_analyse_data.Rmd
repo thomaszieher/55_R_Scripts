@@ -1281,11 +1281,17 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
     ##stack rasters and compute correlation coefficient
     raststack=stack(data.r,Suctionrast)
     corel=layerStats(raststack,'pearson')
+    
+    #cor.test(data.r@data@values,Suctionrast@data@values)
+    ttest=t.test(data.r@data@values,Suctionrast@data@values,paired=T)
+    
     corel$'pearson correlation coefficient'
     corel
-    corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2]))
+    corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2],ttest=ttest$p.value))
   }
 }
+
+max(corelList$ttest)
 
 wireframe(cor~log10(ss)*log10(ks),
           corelList,drape=T,aspect=c(1,1),
@@ -1298,6 +1304,9 @@ wireframe(cor~log10(ss)*log10(ks),
 
 
 best=corelList[corelList$cor==max(corelList$cor),]
+best2=corelList[corelList$ttest==max(corelList$ttest),]
+
+plot(corelList$cor,corelList$ttest)
 
 ##parameter boxplot for correlation >=0.95
 boxplot(log10(corelList[corelList$cor>=0.95,]$ks),
@@ -1466,6 +1475,32 @@ data.r=raster(data.m)
 raststack=stack(data.r,Suctionrast)
 corel=layerStats(raststack,'pearson')
 corel$'pearson correlation coefficient'[1,2]
+
+
+##check correlation
+shapiro.test(log10(abs(data.r@data@values)))
+shapiro.test(log10(abs(Suctionrast@data@values)))
+
+##standard error of the mean
+se=function(x){
+  sd(x)/(length(x))^0.5
+}
+##confidence interval of the mean for student-t-distribution
+cint=function(x,alpha){
+  qt(1-alpha/2,df=length(x)-1)*se(x)
+}
+plot(data.r@data@values,Suctionrast@data@values)
+t.test(data.r@data@values,Suctionrast@data@values,paired=T)
+
+cintobs=cint(Suctionrast@data@values,0.05)
+cintmodel=cint(data.r@data@values,0.05)
+mean(data.r@data@values)
+mean(Suctionrast@data@values)
+
+##r squared
+plot(data.r@data@values,Suctionrast@data@values,asp=1)
+summary(lm(data.r@data@values~Suctionrast@data@values))
+
 
 
 ##scale in regard to measurements
