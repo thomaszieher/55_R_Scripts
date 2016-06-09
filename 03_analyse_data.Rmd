@@ -305,6 +305,11 @@ rastName="total_range"##"total_sum"
 rast.series=as.Raster(readRAST6(rastName))
 ##plot relative range-raster
 relRange=rast.series/material.before*100
+
+##omit values lower than 3% (uncertainty)
+uncertainty=3
+relRange@data@values[relRange@data@values<uncetainty]=0
+
 par(xaxs="i",yaxs="i")
 par(mfrow=c(1,1),mar=c(5,5,5,5),oma=c(0,0,0,0),xaxs="i",yaxs="i")
 plot(NA,NA,xlim=c(0,250),ylim=c(-150,0),axes=F,xlab="",ylab="",asp=1)
@@ -313,7 +318,7 @@ mtext(side=1,line=2.5,"Relative distance [m]")
 axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
 mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
 mtext(side=4,"Relative change [%]",las=0,line=3)
-plot(relRange,axes=F,box=F,add=T,asp=1,zlim=c(0,25))
+plot(relRange,axes=F,box=F,add=T,asp=1,zlim=c(3,25))
 points(dcpt.vect,pch=20,cex=0.5)
 points(probesERT,pch=3,cex=0.5)
 legend("bottomleft",legend=c("Probes","DCPT"),pch=c(3,20))
@@ -489,6 +494,11 @@ for (i in seq(startRaster,endRaster,by=1)){
   ##calculate mean and sd
   data.mean=aggregate(data,list(data$depth),mean)
   data.sd=aggregate(data,list(data$depth),sd)
+  
+  ##check distribution of resistivity ratios
+  #hist(data[,1][data$depth==1])
+  #shapiro.test(data[,1][data$depth==7])
+  
   names(data.mean)=c("depth","ratio","depth2")
   names(data.sd)=c("depth","sd","depth2")
   ##add to time data frame
@@ -1207,6 +1217,12 @@ psisat=(seq(zmin,zmax,zstep))*beta
 ##par(pty="s")
 ##plot(expand.grid(c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5)),c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5))),log="xy")
 
+##extent excluding initial conditions
+exclude=5
+ext=list(x=seq(exclude*(1/(endRaster-1)),1,length.out=(endRaster-1)), y=seq(0,1,length.out=nrow(data.r)))
+extent(ext)
+obs=crop(Suctionrast,ext)
+
 ks=10e-5
 ss=10e-3
 corelList=data.frame()
@@ -1313,20 +1329,25 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
     data.m=as.matrix(t(data.c)[1:10,])
     data.r=raster(data.m)
     
-    ##stack rasters and compute correlation coefficient
+    ##compute correlation coefficient for whole data set
     raststack=stack(data.r,Suctionrast)
     corel=layerStats(raststack,'pearson')
+    
+    ##exclude initial conditions for correlation (first five measurements)
+    #model=crop(data.r,ext)
+    #raststack=stack(obs,model)
+    #corel=layerStats(raststack,'pearson')
+    #corel$'pearson correlation coefficient'[1,2]
+    
     
     #cor.test(data.r@data@values,Suctionrast@data@values)
     ttest=t.test(data.r@data@values,Suctionrast@data@values,paired=T)
     
-    corel$'pearson correlation coefficient'
-    corel
     corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2],ttest=ttest$p.value))
   }
 }
 
-max(corelList$ttest)
+
 
 wireframe(cor~log10(ss)*log10(ks),
           corelList,drape=T,aspect=c(1,1),
@@ -1347,13 +1368,14 @@ best2=corelList[corelList$ttest==max(corelList$ttest),]
 
 ###Compare parameters
 ```{r echo=F,message=F,warning=F}
-##parameter boxplot for correlation >=0.95
-boxplot(log10(corelList[corelList$cor>=0.95,]$ks),
-        log10(corelList[corelList$cor>=0.95,]$ss),
-        log10(corelList[corelList$cor>=0.95,]$d0),
+##parameter boxplot for correlation >=0.90
+boxplot(log10(corelList[corelList$cor>=0.90,]$ks),
+        log10(corelList[corelList$cor>=0.90,]$ss),
+        log10(corelList[corelList$cor>=0.90,]$d0),
         names=c("Kz","Ss","D0"),
         ylim=c(-8,-1))
 
+nrow(corelList[corelList$cor>=0.90,])
 
 ##ss for clay after lu and godt 2013, p.118W
 n=0.5108
@@ -1514,8 +1536,20 @@ cols=colorRampPalette(brewer.pal(3,"RdBu"))(100)
 data.m=as.matrix(t(data.c)[1:10,])
 data.r=raster(data.m)
 
-##stack rasters and compute correlation coefficient
+##compute correlation coefficient for whole data set
 raststack=stack(data.r,Suctionrast)
+corel=layerStats(raststack,'pearson')
+corel$'pearson correlation coefficient'[1,2]
+
+
+##exclude initial conditions for correlation (first five measurements)
+exclude=5
+ext=list(x=seq(exclude*(1/(endRaster-1)),1,length.out=(endRaster-1)), y=seq(0,1,length.out=nrow(data.r)))
+extent(ext)
+
+model=crop(data.r,ext)
+obs=crop(Suctionrast,ext)
+raststack=stack(obs,model)
 corel=layerStats(raststack,'pearson')
 corel$'pearson correlation coefficient'[1,2]
 
