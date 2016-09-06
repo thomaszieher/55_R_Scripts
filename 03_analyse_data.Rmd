@@ -131,6 +131,7 @@ irr_mask=readVECT6("mask")
 ##import irrigation plot border
 irr_border=readVECT6("border_irrplot")
 
+
 ##import dcpt data
 dcpt.vect=readVECT6(vname="dcpt_points")
 ##calculate resistivity
@@ -241,7 +242,10 @@ mtext(side=1,line=2.5,"Relative distance [m]")
 axis(side=2,at=seq(-150,0,by=50),labels=seq(0,150,by=50)/10,las=1)
 mtext(side=2,line=2.5,"Relative elevation [m]",las=0)
 mtext(side=4,"Relative deviation [%]",las=0,line=3)
-plot((rangeERT/material.before)*100,axes=F,box=F,add=T,asp=1,zlim=c(0,4.5))
+reldiff=(rangeERT/material.before)*100
+plot(reldiff,axes=F,box=F,add=T,asp=1,zlim=c(0,4.5))
+
+boxplot(na.omit(reldiff@data@values),ylim=c(0,max(na.omit(reldiff@data@values))))
 ```
 
 
@@ -302,8 +306,14 @@ rast.series=as.Raster(readRAST6(rastName))
 ##plot relative range-raster
 relRange=rast.series/material.before*100
 
+<<<<<<< HEAD
 uncertainty=3
 relRange@data@values[relRange@data@values<=uncertainty]=0
+=======
+##omit values lower than 3% (uncertainty)
+uncertainty=3
+relRange@data@values[relRange@data@values<uncetainty]=0
+>>>>>>> f03100fd76304ba07d90e06d02f94874448bbd29
 
 par(xaxs="i",yaxs="i")
 par(mfrow=c(1,1),mar=c(5,5,5,5),oma=c(0,0,0,0),xaxs="i",yaxs="i")
@@ -405,7 +415,7 @@ Ratio to mean of first five measurements
 ##from start of irrigation
 startRaster=2
 ##until irrigation
-endRaster=17
+endRaster=16
 ##all measurements
 #endRaster=51
 
@@ -435,6 +445,7 @@ abline(v=c(0))
 i=16
 ert.time=data.frame()
 ert.depth=data.frame(NA)
+sd.depth=data.frame(NA)
 for (i in seq(startRaster,endRaster,by=1)){
   #print(i)
   #print(sprintf("%s-%s",rlist[i+1],rlist[i]))
@@ -488,11 +499,20 @@ for (i in seq(startRaster,endRaster,by=1)){
   ##calculate mean and sd
   data.mean=aggregate(data,list(data$depth),mean)
   data.sd=aggregate(data,list(data$depth),sd)
+  
+  ##check distribution of resistivity ratios
+  #hist(data[,1][data$depth==1])
+  #shapiro.test(data[,1][data$depth==7])
+  
   names(data.mean)=c("depth","ratio","depth2")
+  names(data.sd)=c("depth","sd","depth2")
   ##add to time data frame
   data.append=data.frame(data.mean$ratio)
+  sd.append=data.frame(data.sd$sd)
   names(data.append)=c(sprintf("tstep_%i",i))
+  names(sd.append)=c(sprintf("tstep_%i",i))
   ert.depth=cbind(ert.depth,data.append)
+  sd.depth=cbind(sd.depth,sd.append)
 
   ##plot mean resistivity and sd with depth
   lines(data.mean$ratio,data.mean$depth-0.5,col=colors.runs[i-startRaster+1],lwd=4)
@@ -500,6 +520,29 @@ for (i in seq(startRaster,endRaster,by=1)){
   #lines(data.mean$ratio-data.sd[,2],data.mean$depth,col=colors.runs[i-startRaster],lty=2)
 }
 legend("bottomleft",title="Time",legend=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M:%S"),col=colors.runs,lty=1,lwd=4,cex=0.8)
+
+##plot uncertainty as raster
+###Plot water content with depth over time  
+##build matrix
+sdData=as.matrix(sd.depth[,-1])
+
+##rasterize matrix
+sdDatarast=raster(sdData)
+
+
+
+par(mfrow=c(1,1))
+##plot uncertainty (stabw)
+colorsUncert=colorRampPalette(c("white","red"))(30)
+par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+lag=1/(endRaster-1)/2
+axis(side=1,at=seq(lag,1-lag,length.out=(endRaster-1)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"),las=2)
+axis(side=2,at=seq(0,1,0.2),labels=seq(100,0,-20),las=1)
+mtext(side=1,"Time",line=2.5)
+mtext(side=2,"Depth [m]",line=2.5,las=0)
+mtext(side=4,line=4,"Standard deviation [%]",las=0)
+plot(sdDatarast,col=colorsUncert,add=T,zlim=c(0,5.3))
 ```
 
 
@@ -859,9 +902,7 @@ Suctionexp=data.frame(depth=seq(0,100,10),Suctionexp1=predict(lm(suction~depth,d
 
 
 ##now calculate water content with depth
-waterDepth=data.frame(watercontent1=vanGenuchten(log10(-ciSuction[,1][1:100]*100),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,
-                      watercontent2=vanGenuchten(log10(-ciSuction2[,1][1:100]*100),coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,
-                      depth=depth[1:100]*100)
+waterDepth=data.frame(watercontent1=vanGenuchten(-ciSuction[,1][1:101]*100,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,watercontent2=vanGenuchten(-ciSuction2[,1][1:101]*100,coef(genuchtenFit)[1],coef(genuchtenFit)[2],coef(genuchtenFit)[3],coef(genuchtenFit)[4])*100,depth=depth[1:101]*100)
 
 ##fit linear model and extrapolate initial water content
 TDRexp=data.frame(depth=seq(0,100,10),volexp1=predict(lm(vol~depth,data=TDRdata),newdata=data.frame(depth=seq(0,100,10))),volexp2=predict(lm(vol~depth,data=TDRdataAfter),newdata=data.frame(depth=seq(0,100,10))))
@@ -884,7 +925,7 @@ points(TDRdataAfter$vol,TDRdataAfter$depth,pch=2,cex=0.7,col="blue")
 lines(ci2[,1],seq(0,100),type="l",col="blue",lwd=2)
 legend("bottomleft",legend=c("Before irrigation","After irrigation"),pch=c(3,2),lty=c(1,1),col=c("red","blue"))
 
-
+##soil water content for linear suction
 lines(waterDepth$watercontent1,
      waterDepth$depth,
      type="l",
@@ -996,7 +1037,8 @@ par(mfrow=c(1,1))
 ##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+lag=1/(endRaster-1)/2
+axis(side=1,at=seq(lag,1-lag,length.out=(endRaster-1)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
@@ -1006,7 +1048,8 @@ plot(RatioDatarast,col=rev(colors),add=T,zlim=c(34,40))
 
 ##plot relative change
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+lag=1/(endRaster-1)/2
+axis(side=1,at=seq(lag,1-lag,length.out=(endRaster-1)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
@@ -1071,7 +1114,8 @@ par(mfrow=c(1,1))
 ##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
-axis(side=1,at=seq(1:ncol(scaleRatio))/10,labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+lag=1/(endRaster-1)/2
+axis(side=1,at=seq(lag,1-lag,length.out=(endRaster-1)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
@@ -1157,11 +1201,11 @@ d=-coef(initFit)[1]/coef(initFit)[2]
 slope=31.3*pi/180
 
 ##time
-time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300)
 #time=c(0,0,0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
 
 ##precipitation (27.5 mm/h)
-iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
+iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
 
 ##number of time steps
 tsteps=length(time)
@@ -1185,6 +1229,14 @@ psisat=(seq(zmin,zmax,zstep))*beta
 ##par(pty="s")
 ##plot(expand.grid(c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5)),c(10^(seq(0,1,length.out=5)) %o% 10^(-8:-5))),log="xy")
 
+##extent excluding initial conditions
+exclude=5
+ext=list(x=seq(exclude*(1/(endRaster-1)),1,length.out=(endRaster-1)), y=seq(0,1,length.out=nrow(data.r)))
+extent(ext)
+obs=crop(Suctionrast,ext)
+
+ks=10e-5
+ss=10e-3
 corelList=data.frame()
 for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
   print(ks)
@@ -1289,34 +1341,53 @@ for (ks in unique(c(10^(seq(0,1,0.1)) %o% 10^(-8:-4)))){
     data.m=as.matrix(t(data.c)[1:10,])
     data.r=raster(data.m)
     
-    ##stack rasters and compute correlation coefficient
+    ##compute correlation coefficient for whole data set
     raststack=stack(data.r,Suctionrast)
     corel=layerStats(raststack,'pearson')
-    corel$'pearson correlation coefficient'
-    corel
-    corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2]))
+    
+    ##exclude initial conditions for correlation (first five measurements)
+    #model=crop(data.r,ext)
+    #raststack=stack(obs,model)
+    #corel=layerStats(raststack,'pearson')
+    #corel$'pearson correlation coefficient'[1,2]
+    
+    
+    #cor.test(data.r@data@values,Suctionrast@data@values)
+    ttest=t.test(data.r@data@values,Suctionrast@data@values,paired=T)
+    
+    corelList=rbind(corelList,data.frame(ks=ks,ss=ss,d0=d0,cor=corel$"pearson correlation coefficient"[1,2],ttest=ttest$p.value))
   }
 }
+
+
 
 wireframe(cor~log10(ss)*log10(ks),
           corelList,drape=T,aspect=c(1,1),
           colorkey=T,col.regions=colorRampPalette(brewer.pal(5,"RdYlGn"))(100),
-          screen=list(z=20,x=-50),
+          screen=list(z=25,x=-55),
           zlab=list("Pearson's correlation coefficient", rot=95),
-          xlab=list("LOG10 Specific storage [1/m]",rot=15),
-          ylab=list("LOG10 Hydraulic conductivity [m/s]",rot=293),
+          xlab=list("LOG10 Specific storage [1/m]",rot=19),
+          ylab=list("LOG10 Hydraulic conductivity [m/s]",rot=300),
           scales = list(arrows = FALSE))
 
 
 best=corelList[corelList$cor==max(corelList$cor),]
+best2=corelList[corelList$ttest==max(corelList$ttest),]
 
-##parameter boxplot for correlation >=0.95
-boxplot(log10(corelList[corelList$cor>=0.95,]$ks),
-        log10(corelList[corelList$cor>=0.95,]$ss),
-        log10(corelList[corelList$cor>=0.95,]$d0),
+#plot(corelList$cor,corelList$ttest)
+```
+
+
+###Compare parameters
+```{r echo=F,message=F,warning=F}
+##parameter boxplot for correlation >=0.90
+boxplot(log10(corelList[corelList$cor>=0.90,]$ks),
+        log10(corelList[corelList$cor>=0.90,]$ss),
+        log10(corelList[corelList$cor>=0.90,]$d0),
         names=c("Kz","Ss","D0"),
         ylim=c(-8,-1))
 
+nrow(corelList[corelList$cor>=0.90,])
 
 ##ss for clay after lu and godt 2013, p.118W
 n=0.5108
@@ -1338,6 +1409,7 @@ lines(x=rep(2.6,length(sslab)),y=log10(sslab),col="red")
 
 
 ##Ks and K0 from Rosetta (using grain fractions)
+setwd(rootPath)
 rosetta=read.table("data_rosetta_best.txt",sep="\t",header=T,skip=1)
 rosetta["Ks_ms"]=10^rosetta$Ks/100/24/60/60
 rosetta["K0_ms"]=10^rosetta$Ko/100/24/60/60
@@ -1355,10 +1427,13 @@ lines(x=c(3.5,3.5),y=c(log10(d0min),log10(d0max)),col="green")
 lines(x=c(0.8,1.2),y=c(log10(best$ks),log10(best$ks)),col="red")
 lines(x=c(1.8,2.2),y=c(log10(best$ss),log10(best$ss)),col="red")
 lines(x=c(2.8,3.2),y=c(log10(best$d0),log10(best$d0)),col="red")
+```
 
 
 
-##plot best raster
+###plot best raster
+Tension-saturated initial conditions  
+```{r echo=F,message=F,warning=F}
 ks=corelList[corelList$cor==max(corelList$cor),]$ks
 ss=corelList[corelList$cor==max(corelList$cor),]$ss
 
@@ -1373,11 +1448,11 @@ d=-coef(initFit)[1]/coef(initFit)[2]
 slope=31.3*pi/180
 
 ##time
-time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
+time=c(0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300)
 #time=c(0,0,0,420,820,1260,1680,2100,2520,2940,3360,3780,4200,4620,5040,5460,5880,6300,6720)
 
 ##precipitation (27.5 mm/h)
-iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
+iz=c(0.0,0.0,0.0,0.0,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889,0.00000763889)
 
 ##number of time steps
 tsteps=length(time)
@@ -1473,15 +1548,63 @@ cols=colorRampPalette(brewer.pal(3,"RdBu"))(100)
 data.m=as.matrix(t(data.c)[1:10,])
 data.r=raster(data.m)
 
-##stack rasters and compute correlation coefficient
+##compute correlation coefficient for whole data set
 raststack=stack(data.r,Suctionrast)
 corel=layerStats(raststack,'pearson')
 corel$'pearson correlation coefficient'[1,2]
 
 
+##exclude initial conditions for correlation (first five measurements)
+exclude=5
+ext=list(x=seq(exclude*(1/(endRaster-1)),1,length.out=(endRaster-1)), y=seq(0,1,length.out=nrow(data.r)))
+extent(ext)
+
+model=crop(data.r,ext)
+obs=crop(Suctionrast,ext)
+raststack=stack(obs,model)
+corel=layerStats(raststack,'pearson')
+corel$'pearson correlation coefficient'[1,2]
+
+
+##check correlation
+shapiro.test(log10(abs(data.r@data@values)))
+shapiro.test(log10(abs(Suctionrast@data@values)))
+
+##standard error of the mean
+se=function(x){
+  sd(x)/(length(x))^0.5
+}
+##confidence interval of the mean for student-t-distribution
+cint=function(x,alpha){
+  qt(1-alpha/2,df=length(x)-1)*se(x)
+}
+plot(data.r@data@values,Suctionrast@data@values)
+t.test(data.r@data@values,Suctionrast@data@values,paired=T)
+
+cintobs=cint(Suctionrast@data@values,0.05)
+cintmodel=cint(data.r@data@values,0.05)
+mean(data.r@data@values)
+mean(Suctionrast@data@values)
+
+##r squared
+datafit=data.frame(model=data.r@data@values,obs=Suctionrast@data@values)
+plot(datafit$obs,datafit$model,xlim=c(-30,-5),asp=1,xlab="Observations",ylab="Model")
+devFit=lm(model~obs,data=datafit)
+regr=data.frame(x=seq(-30,0,1))
+regr["y"]=predict(devFit,newdata=data.frame(obs=regr$x))
+lines(regr$x,regr$y,col="red")
+text(-10,-27,sprintf("Rsq=%0.2f",summary(devFit)$r.squared),cex=0.8)
+summary(devFit)
+
+
+
 ##scale in regard to measurements
 zMin=-30
+<<<<<<< HEAD
 zMax=-5
+=======
+zMax=-4
+>>>>>>> f03100fd76304ba07d90e06d02f94874448bbd29
 data.r[data.r>zMax]=zMax
 data.r[data.r<zMin]=zMin
 
@@ -1503,17 +1626,23 @@ plot(data.r,col=rev(colors),zlim=c(-30,-5),add=T)
 
 
 ##plot relative difference between model results and observations
-colors=colorRampPalette(c("red","white","#9cd01b"))(100)
+colorsreldiff=colorRampPalette(c("red","white","#9cd01b"))(100)
 par(mfrow=c(1,1))
 ##plot absolute change
 par(xaxs="i",yaxs="i",mar=c(4,5,4,6))
 plot(NA,NA,xlim=c(0,1),ylim=c(0,1),axes=F,ylab="",xlab="")
+<<<<<<< HEAD
 axis(side=1,at=seq(1:ncol(scaleRatio))/16-(1/32),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+=======
+lag=1/(endRaster-1)/2
+axis(side=1,at=seq(lag,1-lag,length.out=(endRaster-1)),labels=format(as.POSIXct(ert.time[,1],origin="1970-01-01"),format="%H:%M"))
+>>>>>>> f03100fd76304ba07d90e06d02f94874448bbd29
 axis(side=2,at=seq(0,1,0.2),labels=seq(1,0,-0.2),las=1)
 mtext(side=1,"Time",line=2.5)
 mtext(side=2,"Depth [m]",line=2.5,las=0)
 #mtext(side=4,line=4,"Water content [%]",las=0)
 diffrast=(RatioDatarast-data.r)/RatioDatarast
+<<<<<<< HEAD
 plot(diffrast,col=colors,add=T,zlim=c(-0.45,0.45))
 
 diffrast=(RatioDatarast-data.r)
@@ -1537,6 +1666,10 @@ color.bar <- function(lut, min, max=-min, nticks=9, ticks=seq(min, max, len=ntic
 }
 color.bar(colorRampPalette(c("red","white","#9cd01b"))(21), -0.4)
 
+=======
+#plot(diffrast,col=rev(colors)[(10/7):(length(colors))],add=T,zlim=c(-0.15,0.45))
+plot(diffrast,col=colorsreldiff,add=T,zlim=c(-0.42,0.42))
+>>>>>>> f03100fd76304ba07d90e06d02f94874448bbd29
 
 boxplot(diffrast@data@values,ylim=c(-0.5,0.5))
 ```
